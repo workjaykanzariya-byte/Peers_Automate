@@ -6,6 +6,14 @@ import { AppShell } from './layouts/AppShell';
 import { DashboardPage } from './pages/DashboardPage';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
+import { WhatsAppPage } from './pages/WhatsAppPage';
+import { ContactsPage } from './pages/ContactsPage';
+import { LeadsPage } from './pages/LeadsPage';
+import { TemplatesPage } from './pages/TemplatesPage';
+import { InboxPage } from './pages/InboxPage';
+import { CampaignsPage } from './pages/CampaignsPage';
+import { WebhooksPage } from './pages/WebhooksPage';
+import { SettingsPage } from './pages/SettingsPage';
 import { PlaceholderModulePage } from './pages/PlaceholderModulePage';
 
 const queryClient = new QueryClient({
@@ -58,14 +66,15 @@ export const App: React.FC = () => {
             >
               <Route index element={<Navigate to="/dashboard" replace />} />
               <Route path="dashboard" element={<DashboardPage />} />
-              <Route path="whatsapp" element={<PlaceholderModulePage />} />
-              <Route path="inbox" element={<PlaceholderModulePage />} />
+              <Route path="whatsapp" element={<WhatsAppPage />} />
+              <Route path="inbox" element={<InboxPage />} />
               <Route path="automations" element={<PlaceholderModulePage />} />
-              <Route path="contacts" element={<PlaceholderModulePage />} />
-              <Route path="templates" element={<PlaceholderModulePage />} />
-              <Route path="campaigns" element={<PlaceholderModulePage />} />
-              <Route path="webhooks" element={<PlaceholderModulePage />} />
-              <Route path="settings" element={<PlaceholderModulePage />} />
+              <Route path="contacts" element={<ContactsPage />} />
+              <Route path="leads" element={<LeadsPage />} />
+              <Route path="templates" element={<TemplatesPage />} />
+              <Route path="campaigns" element={<CampaignsPage />} />
+              <Route path="webhooks" element={<WebhooksPage />} />
+              <Route path="settings" element={<SettingsPage />} />
             </Route>
 
             <Route path="*" element={<Navigate to="/dashboard" replace />} />

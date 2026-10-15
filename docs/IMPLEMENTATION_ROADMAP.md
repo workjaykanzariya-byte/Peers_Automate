@@ -8,7 +8,7 @@
 
 ## 1. Phased Delivery Roadmap
 
-### Phase 1: Foundation, Security Architecture & Multi-Tenant Core (Current Deliverable)
+### Phase 1: Foundation, Security Architecture & Multi-Tenant Core (Completed)
 - [x] Workspace & environment discovery (Postgres 18, Redis 8, Node v24).
 - [x] Product Specification, Technical Architecture, Security Model & Database Design.
 - [x] Monorepo repository setup (`apps/api`, `apps/web`, `apps/worker`, `packages/shared`).
@@ -20,36 +20,46 @@
 - [x] React 19 + TypeScript + Vite frontend shell with modern aesthetics, responsive layout, sidebar, header, tenant switcher, and dashboard cards.
 - [x] Automated test suite verifying tenant isolation and security boundaries.
 
-### Phase 2: Meta WhatsApp Cloud API & Asset Management
-- [ ] Meta Embedded Signup OAuth handshake & token exchange.
-- [ ] WABA and Phone Number asset synchronization & tier display.
-- [ ] Inbound Meta webhook verification (`hub.challenge`) and HMAC signature validation (`X-Hub-Signature-256`).
-- [ ] One-click WhatsApp test message delivery verification utility.
+### Phase 2: Meta WhatsApp Cloud API, Contacts, CRM, Inbox, Campaigns & Webhooks (Part 2 — Completed)
+- [x] **Meta WhatsApp Business Platform Integration:**
+  - Official Meta Cloud API v21.0 provider service with envelope encryption (`AES-256-GCM`).
+  - System token & OAuth connection flow with multi-WABA & phone number asset selection.
+  - One-click test message dispatch workflow.
+  - Inbound webhook handshake verification (`hub.challenge`) and HMAC validation (`X-Hub-Signature-256`).
+- [x] **Contact Management & CSV Import Engine:**
+  - International phone normalization to standard E.164 format via `libphonenumber-js`.
+  - CSV formula injection defense (OWASP DDE sanitization).
+  - Asynchronous background CSV import queue with duplicate policies (`SKIP`, `OVERWRITE`, `MERGE_TAGS`).
+  - Contact directory UI with search, tag filters, pagination, bulk selection, and downloadable CSV error reports.
+- [x] **Leads CRM Pipeline:**
+  - Aggregated Kanban pipeline boards grouped by stage (`NEW`, `CONTACTED`, `QUALIFIED`, `PROPOSAL`, `WON`, `LOST`).
+  - Lead priority, follow-up dates, activity notes, and ownership management.
+- [x] **WhatsApp Message Templates:**
+  - Bi-directional synchronization with Meta WhatsApp Manager.
+  - Dynamic parameter detection (`{{1}}`, `{{2}}`), category validation, and message bubble preview.
+- [x] **Omnichannel Customer Chat Inbox:**
+  - 3-pane layout (conversations thread list, active chat, and contact CRM profile).
+  - 24-hour customer service window tracking with real-time countdown timer.
+  - Strict Meta policy compliance (blocking freeform messages after 24h, requiring approved template message).
+- [x] **WhatsApp Marketing & Bulk Campaigns:**
+  - Unified campaign wizard supporting segmented audiences (tags, lists) and direct CSV uploads.
+  - BullMQ queueing with rate limits (20 messages/sec) and per-tier concurrency.
+  - Automatic filtering of opted-out (`OPTED_OUT`) contacts.
+  - Recipient-level status tracking (`PENDING`, `SUBMITTED`, `SENT`, `DELIVERED`, `READ`, `FAILED`).
+- [x] **Outbound Webhooks & SSRF Defense:**
+  - Event catalog (`contact.created`, `lead.stage_changed`, `message.received`, `message.delivered`, `campaign.completed`).
+  - HMAC-SHA256 signature header (`X-DOOT-Signature`).
+  - Strict SSRF protection blocking private RFC1918 CIDRs, loopbacks, and cloud metadata (`169.254.169.254`).
+  - Real-time delivery logs table with idempotent retry capability.
+- [x] **Usage Aggregation & Quotas:**
+  - Real database aggregation service for Starter, Growth, and Enterprise tiers.
+  - Quota enforcement on contacts, monthly messages, and phone number assets.
+- [x] **Automated Test Suite:**
+  - 7 test suites, 33 tests verifying tenant isolation, cryptographic encryption, SSRF protection, CSV sanitization, 24h window compliance, and webhook verification.
 
-### Phase 3: Contact Directory, Leads & Chunked CSV Import Pipeline
-- [ ] Contact CRUD with phone normalization to E.164.
-- [ ] Tags & Contact Groups management.
-- [ ] Lead status pipeline and agent assignment.
-- [ ] Asynchronous CSV import queue (BullMQ) with validation preview and error report download.
-
-### Phase 4: WhatsApp Templates & Broadcast Campaigns
-- [ ] Bi-directional template sync with Meta Cloud API.
-- [ ] Interactive template preview with dynamic variable parameters.
-- [ ] Bulk broadcast campaign wizard (audience segmentation, variable mapping, tier rate limits).
-- [ ] Campaign dispatch queue worker with live progress tracking and recipient delivery logs.
-
-### Phase 5: Omnichannel Inbox & Real-Time Customer Chat
-- [ ] Real-time conversation list with unread counters and status filters.
-- [ ] Message history stream with delivery status ticks and timestamps.
-- [ ] 24-hour customer service window tracking.
-- [ ] In-window freeform composer and out-of-window template selector.
-- [ ] Contact details sidebar and internal team notes.
-
-### Phase 6: Bot Flows, Outbound Webhooks & Platform Administration
-- [ ] Visual Bot Flow automation builder with keyword/trigger routing.
-- [ ] Outbound webhook dispatcher with SSRF protection and retry logic.
-- [ ] Platform Super Admin dashboard for multi-tenant monitoring and plan management.
-- [ ] Audit logs viewer and usage telemetry.
+### Phase 3: Visual Bot Flow Automations & Advanced Billing Engine (Upcoming)
+- [ ] Visual Bot Flow automation builder with node graph and interactive WhatsApp buttons.
+- [ ] Payment provider integration (Razorpay / Stripe SaaS subscription billing).
 
 ---
 

@@ -8,6 +8,13 @@ import { OrganizationsModule } from './modules/organizations/organizations.modul
 import { DashboardModule } from './modules/dashboard/dashboard.module';
 import { HealthModule } from './modules/health/health.module';
 import { QueueModule } from './modules/queues/queue.module';
+import { MetaModule } from './modules/meta/meta.module';
+import { ContactsModule } from './modules/contacts/contacts.module';
+import { TemplatesModule } from './modules/templates/templates.module';
+import { ConversationsModule } from './modules/conversations/conversations.module';
+import { CampaignsModule } from './modules/campaigns/campaigns.module';
+import { WebhooksModule } from './modules/webhooks/webhooks.module';
+import { UsageModule } from './modules/usage/usage.module';
 
 @Module({
   imports: [
@@ -28,6 +35,14 @@ import { QueueModule } from './modules/queues/queue.module';
     OrganizationsModule,
     DashboardModule,
     HealthModule,
+    MetaModule,
+    ContactsModule,
+    TemplatesModule,
+    ConversationsModule,
+    CampaignsModule,
+    WebhooksModule,
+    UsageModule,
   ],
 })
 export class AppModule {}
+
