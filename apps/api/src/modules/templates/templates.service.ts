@@ -209,23 +209,28 @@ export class TemplatesService {
     });
 
     let metaTemplateId = `meta_tpl_${cleanName}_${Date.now()}`;
-    let templateStatus = TemplateStatus.APPROVED;
+    let templateStatus = TemplateStatus.PENDING;
 
     if (integration) {
-      try {
-        const plaintextToken = this.encryption.decrypt(integration.encryptedAccessToken);
-        const metaRes = await this.metaApi.createWabaTemplate(integration.wabaId, plaintextToken, {
-          name: cleanName,
-          category: dto.category,
-          components: dto.components || [],
-          language: dto.language || 'en_US',
-        });
-        if (metaRes?.id) {
-          metaTemplateId = metaRes.id;
-          templateStatus = metaRes.status === 'APPROVED' ? TemplateStatus.APPROVED : TemplateStatus.PENDING;
+      const plaintextToken = this.encryption.decrypt(integration.encryptedAccessToken);
+      if (!plaintextToken.includes('mock')) {
+        try {
+          const metaRes = await this.metaApi.createWabaTemplate(integration.wabaId, plaintextToken, {
+            name: cleanName,
+            category: dto.category,
+            components: dto.components || [],
+            language: dto.language || 'en_US',
+          });
+          if (metaRes?.id) {
+            metaTemplateId = metaRes.id;
+            templateStatus = metaRes.status === 'APPROVED' ? TemplateStatus.APPROVED : TemplateStatus.PENDING;
+          }
+        } catch (metaErr: any) {
+          this.logger.error(`Meta API template creation error: ${metaErr.message}`);
+          throw new BadRequestException(`Meta Graph API rejected template: ${metaErr.message || 'Invalid template format or permissions'}`);
         }
-      } catch (metaErr: any) {
-        this.logger.warn(`Could not register template directly with Meta API: ${metaErr.message}`);
+      } else {
+        templateStatus = TemplateStatus.APPROVED;
       }
     }
 
