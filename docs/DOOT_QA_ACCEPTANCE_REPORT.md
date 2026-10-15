@@ -93,6 +93,34 @@
 - **Fix Implemented**: Updated test script to `jest --runInBand`.
 - **Verification**: All 11 test suites completed in 14.2 seconds with 100% pass rate (49/49 passed).
 
+### Defect 6: Customer WhatsApp Connection Endpoint Routing Mismatch & DTO Validation
+- **Severity**: Critical / Blocker (Frontend displayed `Cannot POST /api/v1/meta/connect`)
+- **Module**: `apps/web/src/pages/WhatsAppPage.tsx`, `apps/api/src/modules/meta/meta.controller.ts`, `apps/api/src/modules/meta/dto/connect-waba.dto.ts`
+- **Root Cause**: `WhatsAppPage.tsx` submitted connection requests to `POST /meta/connect` and test messages to `POST /meta/test-message`, whereas `MetaController` registered them under `@Post('accounts/connect')` and `@Post('accounts/test-message')`. Additionally, the backend DTO strictly required `metaBusinessId` via `@IsNotEmpty()`, but the frontend connection modal only collected WABA ID, Phone Number ID, Display Phone Number, and Access Token.
+- **Fix Implemented**:
+  1. Updated `WhatsAppPage.tsx` API calls to `/meta/accounts/connect` and `/meta/accounts/test-message`, while automatically populating `metaBusinessId: wabaId`.
+  2. Registered route aliases `@Post('connect')` and `@Post('test-message')` on `MetaController` to guarantee both canonical and legacy routes resolve seamlessly.
+  3. Made `metaBusinessId` optional in `ConnectWabaDto` and added default fallback in `MetaAccountsService`.
+- **Verification**: Browser verification passed; verified live connection of WABA `1029384756` (QA Support Line `+15554321098`) returning HTTP 201 Created.
+
+### Defect 7: Customer Dashboard Statistics Failure on Platform Super Admin Login
+- **Severity**: High (Frontend displayed `Unable to load live dashboard statistics for this tenant`)
+- **Module**: `apps/web/src/pages/LoginPage.tsx`, `apps/api/src/common/guards/tenant-context.guard.ts`, `apps/web/src/pages/DashboardPage.tsx`
+- **Root Cause**: When logging in as Super Admin (`owner@doot.io`), `LoginPage.tsx` unconditionally navigated to `/dashboard`. Platform super admins do not belong to individual customer tenants by default (`memberships: []`). The backend `TenantContextGuard` threw `403 Forbidden` (`User does not belong to any active organization`), causing the customer dashboard statistics query to fail and display the red error card.
+- **Fix Implemented**:
+  1. Updated `LoginPage.tsx` to automatically redirect platform super admins (`isPlatformAdmin === true`) to `/admin` command center upon login.
+  2. Updated `TenantContextGuard` to allow platform super admins to inspect requested tenants or fall back gracefully to the first active tenant.
+  3. Updated `DashboardPage.tsx` to show a Super Admin overview banner directing to `/admin` if no tenant context is selected, suppressing the generic error card.
+  4. Made all customer dashboard KPI cards clickable, navigating to their respective modules (`/contacts`, `/templates`, `/inbox`, `/webhooks`, `/campaigns`).
+- **Verification**: Verified login with both `owner@doot.io` (lands on `/admin`) and `user@doot-test.com` (lands on `/dashboard` with 0 error cards and live PostgreSQL-backed statistics).
+
+### Defect 8: Monorepo Root npm test Workspace Incompatibility
+- **Severity**: Low (Root `npm test` failed on packages without test scripts)
+- **Module**: `package.json`
+- **Root Cause**: Monorepo root `npm test` invoked `npm run test --workspaces`, which aborted when encountering `@doot/shared` and `@doot/web` due to lack of a test script.
+- **Fix Implemented**: Added `--if-present` flag: `npm run test --workspaces --if-present`.
+- **Verification**: `npm test` runs all 11 Jest integration test suites and exits with code 0.
+
 ---
 
 ## D. Sanitized Test & Security Evidence
