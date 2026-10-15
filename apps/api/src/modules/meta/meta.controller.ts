@@ -56,11 +56,35 @@ export class MetaController {
     return this.accountsService.connectWaba(tenant.organizationId, user.id, dto);
   }
 
+  @Post('connect')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, TenantContextGuard)
+  @ApiOperation({ summary: 'Connect Meta WABA (alias)' })
+  async connectAccountAlias(
+    @CurrentTenant() tenant: ITenantContext,
+    @CurrentUser() user: IAuthUser,
+    @Body() dto: ConnectWabaDto,
+  ) {
+    return this.accountsService.connectWaba(tenant.organizationId, user.id, dto);
+  }
+
   @Post('accounts/test-message')
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, TenantContextGuard)
   @ApiOperation({ summary: 'Send diagnostic live test WhatsApp message to verify integration' })
   async sendTestMessage(
+    @CurrentTenant() tenant: ITenantContext,
+    @CurrentUser() user: IAuthUser,
+    @Body() dto: SendTestMessageDto,
+  ) {
+    return this.accountsService.sendTestMessage(tenant.organizationId, user.id, dto);
+  }
+
+  @Post('test-message')
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, TenantContextGuard)
+  @ApiOperation({ summary: 'Send diagnostic live test WhatsApp message (alias)' })
+  async sendTestMessageAlias(
     @CurrentTenant() tenant: ITenantContext,
     @CurrentUser() user: IAuthUser,
     @Body() dto: SendTestMessageDto,

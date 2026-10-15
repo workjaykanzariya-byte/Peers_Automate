@@ -62,7 +62,7 @@ export const WhatsAppPage: React.FC = () => {
   });
 
   const connectMutation = useMutation({
-    mutationFn: (data: any) => api.post('/meta/connect', data),
+    mutationFn: (data: any) => api.post('/meta/accounts/connect', data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['meta-accounts'] });
       setIsConnectModalOpen(false);
@@ -74,19 +74,21 @@ export const WhatsAppPage: React.FC = () => {
       setErrorMessage(null);
     },
     onError: (err: any) => {
-      setErrorMessage(err.message || 'Failed to connect WhatsApp Business Account');
+      const msg = Array.isArray(err.message) ? err.message.join(', ') : err.message || 'Failed to connect WhatsApp Business Account';
+      setErrorMessage(msg);
     },
   });
 
   const testMessageMutation = useMutation({
-    mutationFn: (data: any) => api.post('/meta/test-message', data),
+    mutationFn: (data: any) => api.post('/meta/accounts/test-message', data),
     onSuccess: () => {
       alert('Test message submitted successfully via Meta Graph API!');
       setIsTestMessageModalOpen(false);
       setTestRecipient('');
     },
     onError: (err: any) => {
-      alert(`Error sending message: ${err.message || 'Meta API returned error'}`);
+      const msg = Array.isArray(err.message) ? err.message.join(', ') : err.message || 'Meta API returned error';
+      alert(`Error sending message: ${msg}`);
     },
   });
 
@@ -317,6 +319,7 @@ export const WhatsAppPage: React.FC = () => {
               onSubmit={(e) => {
                 e.preventDefault();
                 connectMutation.mutate({
+                  metaBusinessId: wabaId,
                   wabaId,
                   name: verifiedName || 'WhatsApp Account',
                   phoneNumberId: phoneId,

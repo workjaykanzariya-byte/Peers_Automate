@@ -66,7 +66,7 @@ export class MetaAccountsService {
       const integration = await tx.metaIntegration.create({
         data: {
           organizationId,
-          metaBusinessId: dto.metaBusinessId,
+          metaBusinessId: dto.metaBusinessId || `biz_${dto.wabaId}`,
           wabaId: dto.wabaId,
           name: dto.name,
           encryptedAccessToken: ciphertext,

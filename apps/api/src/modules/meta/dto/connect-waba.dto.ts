@@ -2,10 +2,10 @@ import { IsNotEmpty, IsString, IsOptional } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class ConnectWabaDto {
-  @ApiProperty({ example: 'biz_1234567890' })
+  @ApiProperty({ example: 'biz_1234567890', required: false })
   @IsString()
-  @IsNotEmpty()
-  metaBusinessId: string;
+  @IsOptional()
+  metaBusinessId?: string;
 
   @ApiProperty({ example: 'waba_9876543210' })
   @IsString()

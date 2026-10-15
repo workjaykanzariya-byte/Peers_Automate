@@ -25,6 +25,21 @@ export class TenantContextGuard implements CanActivate {
 
     // 2. Query memberships for this user
     if (requestedOrgId) {
+      if (user.isPlatformAdmin) {
+        const org = await this.prisma.organization.findUnique({
+          where: { id: requestedOrgId },
+        });
+        if (org) {
+          request.tenant = {
+            organizationId: org.id,
+            organizationName: org.name,
+            role: UserRole.OWNER,
+            user,
+          };
+          return true;
+        }
+      }
+
       // Validate membership in the explicitly requested tenant
       const membership = await this.prisma.membership.findUnique({
         where: {
@@ -56,6 +71,22 @@ export class TenantContextGuard implements CanActivate {
       request.tenant = tenantContext;
       return true;
     } else {
+      if (user.isPlatformAdmin) {
+        const firstOrg = await this.prisma.organization.findFirst({
+          where: { status: 'ACTIVE' },
+          orderBy: { createdAt: 'asc' },
+        });
+        if (firstOrg) {
+          request.tenant = {
+            organizationId: firstOrg.id,
+            organizationName: firstOrg.name,
+            role: UserRole.OWNER,
+            user,
+          };
+          return true;
+        }
+      }
+
       // Fall back to default/first active organization for user
       const membership = await this.prisma.membership.findFirst({
         where: {

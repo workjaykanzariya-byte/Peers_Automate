@@ -137,4 +137,61 @@ export class AdminController {
       limit ? parseInt(limit, 10) : 50,
     );
   }
+
+  @Get('organizations/:id')
+  @ApiOperation({ summary: 'Get operational detail breakdown for a single customer organization' })
+  async getOrganizationDetail(@Param('id') id: string) {
+    return this.adminService.getOrganizationDetail(id);
+  }
+
+  @Get('messages')
+  @ApiOperation({ summary: 'Platform-wide searchable message audit log' })
+  async listMessages(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('status') status?: string,
+    @Query('search') search?: string,
+    @Query('organizationId') organizationId?: string,
+  ) {
+    return this.adminService.listMessages(
+      page ? parseInt(page, 10) : 1,
+      limit ? parseInt(limit, 10) : 25,
+      status,
+      search,
+      organizationId,
+    );
+  }
+
+  @Get('campaigns')
+  @ApiOperation({ summary: 'Platform-wide broadcast campaigns registry' })
+  async listCampaigns(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('status') status?: string,
+    @Query('search') search?: string,
+    @Query('organizationId') organizationId?: string,
+  ) {
+    return this.adminService.listCampaigns(
+      page ? parseInt(page, 10) : 1,
+      limit ? parseInt(limit, 10) : 20,
+      status,
+      search,
+      organizationId,
+    );
+  }
+
+  @Get('webhook-logs')
+  @ApiOperation({ summary: 'Platform-wide outbound webhook delivery logs' })
+  async listWebhookLogs(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('statusType') statusType?: 'ALL' | 'SUCCESS' | 'FAILED',
+  ) {
+    return this.adminService.listWebhookLogs(
+      page ? parseInt(page, 10) : 1,
+      limit ? parseInt(limit, 10) : 25,
+      statusType,
+    );
+  }
 }
+

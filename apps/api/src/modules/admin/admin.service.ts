@@ -337,4 +337,217 @@ export class AdminService {
       },
     };
   }
+
+  /**
+   * Comprehensive operational detail inspection for a single organization
+   */
+  async getOrganizationDetail(organizationId: string) {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: organizationId },
+      include: {
+        subscription: {
+          include: { plan: true },
+        },
+        memberships: {
+          include: {
+            user: {
+              select: { id: true, email: true, firstName: true, lastName: true, isActive: true, createdAt: true },
+            },
+          },
+        },
+        phoneNumbers: {
+          include: {
+            metaIntegration: {
+              select: { id: true, name: true, wabaId: true, metaBusinessId: true, status: true, tokenKeyVersion: true, createdAt: true },
+            },
+          },
+        },
+        whatsappTemplates: {
+          select: { id: true, name: true, language: true, category: true, status: true, createdAt: true },
+          take: 10,
+        },
+        campaigns: {
+          select: { id: true, name: true, status: true, totalRecipients: true, sentCount: true, deliveredCount: true, failedCount: true, createdAt: true },
+          orderBy: { createdAt: 'desc' },
+          take: 10,
+        },
+        messages: {
+          select: {
+            id: true,
+            direction: true,
+            type: true,
+            status: true,
+            body: true,
+            metaMessageId: true,
+            createdAt: true,
+            conversation: {
+              select: {
+                contact: { select: { firstName: true, lastName: true, phone: true } },
+              },
+            },
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 15,
+        },
+        webhookEndpoints: {
+          select: { id: true, name: true, url: true, events: true, isActive: true, createdAt: true },
+        },
+        auditLogs: {
+          select: { id: true, action: true, resource: true, createdAt: true, user: { select: { email: true } } },
+          orderBy: { createdAt: 'desc' },
+          take: 10,
+        },
+        _count: {
+          select: {
+            contacts: true,
+            conversations: true,
+            messages: true,
+            campaigns: true,
+            whatsappTemplates: true,
+            phoneNumbers: true,
+            memberships: true,
+            webhookEndpoints: true,
+          },
+        },
+      },
+    });
+
+    if (!org) {
+      throw new NotFoundException('Organization not found');
+    }
+
+    return org;
+  }
+
+  /**
+   * Platform-wide Searchable Message Registry
+   */
+  async listMessages(page = 1, limit = 25, status?: string, search?: string, organizationId?: string) {
+    const skip = (page - 1) * limit;
+    const where: any = {};
+
+    if (organizationId) {
+      where.organizationId = organizationId;
+    }
+    if (status && status !== 'ALL') {
+      where.status = status;
+    }
+    if (search && search.trim()) {
+      where.OR = [
+        { body: { contains: search, mode: 'insensitive' } },
+        { conversation: { contact: { phone: { contains: search } } } },
+        { conversation: { contact: { firstName: { contains: search, mode: 'insensitive' } } } },
+      ];
+    }
+
+    const [total, messages] = await Promise.all([
+      this.prisma.message.count({ where }),
+      this.prisma.message.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          organization: { select: { id: true, name: true } },
+          conversation: {
+            select: {
+              contact: { select: { id: true, firstName: true, lastName: true, phone: true } },
+            },
+          },
+        },
+      }),
+    ]);
+
+    return {
+      data: messages,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit) || 1,
+      },
+    };
+  }
+
+  /**
+   * Platform-wide Campaign Registry
+   */
+  async listCampaigns(page = 1, limit = 20, status?: string, search?: string, organizationId?: string) {
+    const skip = (page - 1) * limit;
+    const where: any = {};
+
+    if (organizationId) {
+      where.organizationId = organizationId;
+    }
+    if (status && status !== 'ALL') {
+      where.status = status;
+    }
+    if (search && search.trim()) {
+      where.name = { contains: search, mode: 'insensitive' };
+    }
+
+    const [total, campaigns] = await Promise.all([
+      this.prisma.campaign.count({ where }),
+      this.prisma.campaign.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          organization: { select: { id: true, name: true } },
+          template: { select: { name: true, language: true } },
+          phoneNumber: { select: { displayPhoneNumber: true } },
+        },
+      }),
+    ]);
+
+    return {
+      data: campaigns,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit) || 1,
+      },
+    };
+  }
+
+  /**
+   * Platform-wide Webhook Delivery Logs
+   */
+  async listWebhookLogs(page = 1, limit = 25, statusType?: 'ALL' | 'SUCCESS' | 'FAILED') {
+    const skip = (page - 1) * limit;
+    const where: any = {};
+
+    if (statusType === 'SUCCESS') {
+      where.responseStatus = { gte: 200, lt: 300 };
+    } else if (statusType === 'FAILED') {
+      where.OR = [{ responseStatus: { gte: 400 } }, { errorMessage: { not: null } }];
+    }
+
+    const [total, logs] = await Promise.all([
+      this.prisma.webhookDeliveryLog.count({ where }),
+      this.prisma.webhookDeliveryLog.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          organization: { select: { id: true, name: true } },
+          webhookEndpoint: { select: { name: true, url: true } },
+        },
+      }),
+    ]);
+
+    return {
+      data: logs,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit) || 1,
+      },
+    };
+  }
 }
+

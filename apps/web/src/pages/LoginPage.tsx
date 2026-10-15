@@ -25,7 +25,11 @@ export const LoginPage: React.FC = () => {
       }>('/auth/login', { email, password });
 
       setUserSession(response.user, response.organizations);
-      navigate('/dashboard');
+      if (response.user?.isPlatformAdmin) {
+        navigate('/admin');
+      } else {
+        navigate('/dashboard');
+      }
     } catch (err: any) {
       const msg = Array.isArray(err.message) ? err.message.join(', ') : err.message || 'Login failed';
       setError(msg);
