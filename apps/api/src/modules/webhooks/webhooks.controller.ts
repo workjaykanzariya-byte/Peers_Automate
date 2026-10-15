@@ -49,6 +49,15 @@ export class WebhooksController {
     return this.webhooksService.deleteEndpoint(tenant.organizationId, user.id, id);
   }
 
+  @Post('endpoints/:id/test')
+  @ApiOperation({ summary: 'Trigger a live test payload to verify outbound delivery' })
+  async testEndpoint(
+    @CurrentTenant() tenant: ITenantContext,
+    @Param('id') id: string,
+  ) {
+    return this.webhooksService.testEndpoint(tenant.organizationId, id);
+  }
+
   @Get('logs')
   @ApiOperation({ summary: 'Paginated delivery logs for outbound webhook notifications' })
   async listLogs(

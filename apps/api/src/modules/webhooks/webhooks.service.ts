@@ -247,4 +247,20 @@ export class WebhooksService {
       log.eventId || undefined,
     );
   }
+
+  async testEndpoint(organizationId: string, endpointId: string) {
+    const endpoint = await this.prisma.webhookEndpoint.findFirst({
+      where: { id: endpointId, organizationId },
+    });
+
+    if (!endpoint) {
+      throw new NotFoundException('Webhook endpoint not found');
+    }
+
+    return this.deliverWebhook(organizationId, endpoint, 'endpoint.test_ping', {
+      message: 'This is an end-to-end verification ping from DOOT webhook delivery engine.',
+      timestamp: new Date().toISOString(),
+      testVerification: true,
+    });
+  }
 }

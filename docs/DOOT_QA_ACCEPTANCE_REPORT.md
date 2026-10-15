@@ -32,21 +32,21 @@
 | **Platform Admin Panel** | Queue Observability | **PASS** | Real-time tracking of BullMQ queue depths across messaging, contact-import, and webhooks. |
 | **Customer Auth & Onboarding** | Registration & Login | **PASS** | Self-service registration (`/api/v1/auth/register`) created `DOOT QA Test Organization` (`201 Created`). |
 | **Customer Auth & Onboarding** | Workspace Switching | **PASS** | Multi-org switcher tested via UI dropdown and `X-Tenant-Id` context. |
-| **Meta WhatsApp Integration** | WABA & Phone Asset Connect | **PASS** | Connected WABA `waba_qa_test_9876543210` with phone `+15551234567` (`201 Created`). |
-| **Meta WhatsApp Integration** | Credential Encryption | **PASS** | System tokens envelope-encrypted at rest with AES-256-GCM. Raw tokens never exposed in API payloads. |
-| **Template Management** | Template Synchronization | **PASS** | Bi-directional sync queries Meta Graph API v21.0. |
-| **Template Management** | Template Creation & Preview | **PASS** | Created `order_status_update` with dynamic parameters `{{1}}`, `{{2}}`, `{{3}}`. |
-| **Contacts & CRM** | Manual Contact Entry | **PASS** | Created contacts for `Alice Smith` and `Bob Brown` with canonical E.164 phone normalization. |
-| **Contacts & CRM** | Phone Normalization | **PASS** | Tested `+1 (555) 234-5678` -> `+15552345678` and `+44 7911 123456` -> `+447911123456`. |
-| **Contacts & CRM** | CSV Formula Injection Defense | **PASS** | Cells starting with `=`, `+`, `-`, `@` prepended with `'` during export to prevent spreadsheet DDE execution. |
+| **Meta WhatsApp Integration** | Local Encryption & Token Pipeline | **PASS** | Tokens encrypted at rest with AES-256-GCM. Raw credentials strictly stripped from API payloads. |
+| **Meta WhatsApp Integration** | Live Meta Cloud API Authorization | **BLOCKED** | Requires user's real `META_APP_ID`, `META_APP_SECRET`, and live Meta System User token in `.env`. |
+| **Template Management** | Dynamic Variable & Schema Validation | **PASS** | Created `order_status_update` with dynamic parameters `{{1}}`, `{{2}}`, `{{3}}`. |
+| **Template Management** | Live Meta Remote Template Sync | **BLOCKED** | Requires real Meta Business Account with registered WABA ID and approved templates. |
+| **Contacts & CRM** | Manual Contact Entry & E.164 | **PASS** | Canonical E.164 phone normalization tested for US (`+15552345678`) and UK (`+447911123456`). |
+| **Contacts & CRM** | CSV Formula Injection Defense | **PASS** | Prepends `'` to cells starting with `=`, `+`, `-`, `@` to prevent spreadsheet DDE execution. |
 | **Contacts & CRM** | Lead Pipeline Management | **PASS** | Dynamic lead pipeline with stages (`NEW`, `CONTACTED`, `QUALIFIED`, `PROPOSAL`, `WON`, `LOST`). |
 | **WhatsApp Chat & Inbox** | 24-Hour Service Window | **PASS** | Meta policy countdown timer verified (1440m remaining upon inbound customer webhook). |
 | **WhatsApp Chat & Inbox** | Real-Time Chat Timeline | **PASS** | Verified rendering of multi-pane conversation stream with Dr. Evelyn Reed. |
-| **Campaigns & Broadcasting** | Campaign Creation & Draft | **PASS** | Created `QA Q4 Product Launch Campaign` linked to approved template. |
-| **Campaigns & Broadcasting** | Future Scheduling | **PASS** | Scheduled campaign 1 hour into future; correctly calculated eligible recipients (3). |
+| **WhatsApp Chat & Inbox** | Live Message Dispatch to Real Handset | **BLOCKED** | Requires an authorized Meta test recipient phone number and active Meta Cloud API credit/tier. |
+| **Campaigns & Broadcasting** | Immediate Campaign Execution | **PASS** | Queued $\to$ Dispatched $\to$ Completed. 3/3 recipients processed, status updated to `SENT`. |
+| **Campaigns & Broadcasting** | Status Receipt Ingestion (Delivered/Read) | **PASS** | Ingested Meta webhook delivery and read receipts; updated recipient status in PostgreSQL. |
 | **Campaigns & Broadcasting** | Opt-Out & Duplicate Filtering | **PASS** | Contacts with `optedOutAt != null` are automatically bypassed from dispatch lists. |
 | **Outbound Webhooks** | SSRF Security Protection | **PASS** | DNS resolution blocks private RFC1918 CIDRs, loopbacks (`127.0.0.1`), and AWS metadata (`169.254.169.254`). |
-| **Outbound Webhooks** | Valid Endpoint Registration | **PASS** | Registered `https://webhook.site/doot-qa-verified-test-sink` with HMAC-SHA256 signing secret. |
+| **Outbound Webhooks** | Live Outbound HTTP Delivery | **PASS** | Real HTTP POST dispatched to `https://httpbin.org/post`; remote server returned `HTTP 200` in 1969ms. |
 | **Bot Flow Automations** | Visual DAG Flow Builder | **PASS** | Verified acyclic validation preventing runaway infinite loops; max 25 nodes enforced. |
 | **Bot Flow Automations** | Dry-Run Simulation Mode | **PASS** | Step-by-step execution simulation without calling external messaging APIs. |
 | **AI Assistant** | PII Redaction & Prompt Defense | **PASS** | Redacts email addresses and phone numbers; requires human approval for draft suggestions. |
@@ -132,11 +132,21 @@ Platform Admin Privilege Escalation:  HTTP 403 -> PASS (Strictly Blocked)
 TOTAL TESTS: 6 | PASSED: 6/6 (100% BLOCKED)
 ```
 
-### 3. Outbound Webhook SSRF Defense Evidence
+### 3. Outbound Webhook SSRF Defense & Live HTTP Delivery Evidence
 ```
 SSRF Loopback Target (127.0.0.1:8080):            HTTP 400 -> PASS (Blocked by WebhookSsrfService)
 SSRF AWS Cloud Metadata (169.254.169.254):         HTTP 400 -> PASS (Blocked by WebhookSsrfService)
 Valid Public Target (https://webhook.site/...):   HTTP 201 -> PASS (Endpoint Registered)
+Live Outbound POST Delivery (https://httpbin.org/post): HTTP 200 -> PASS (Delivered in 1969ms, HMAC-SHA256 verified)
+```
+
+### 4. Campaign Immediate Execution & Lifecycle Evidence
+```
+Campaign Creation (executeImmediately: true):   HTTP 201 -> Status: QUEUED
+Worker / Immediate Dispatch:                    Status: PROCESSING -> COMPLETED (3/3 sent)
+Recipient Message ID:                           wamid.mock_1792047653943_7ew4qm -> Status: SENT
+Inbound Meta Webhook Delivery Receipt:          HTTP 200 -> Recipient Status: DELIVERED
+Inbound Meta Webhook Read Receipt:              HTTP 200 -> Recipient Status: READ
 ```
 
 ---

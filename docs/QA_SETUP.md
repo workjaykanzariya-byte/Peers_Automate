@@ -24,22 +24,55 @@
 
 ---
 
-## 3. Dedicated QA Test Customer Organization
+## 3. Direct Login Links & Credentials
 
-### Test Tenant Credentials
-- **Organization Name**: `DOOT QA Test Organization`
-- **Organization Slug**: `doot-qa-test-organization-5ddcf3`
-- **User Name**: `DOOT QA User`
-- **Email**: `qa-user@doot-test.com`
-- **Role**: `OWNER` (Scoped strictly to `DOOT QA Test Organization`)
+| Role | Login Link | Destination Route | Email | Password | Privileges |
+| :--- | :--- | :--- | :--- | :--- | :--- |
+| **Platform Super Admin** | [http://localhost:5173/login](http://localhost:5173/login) | `/admin` | `owner@doot.io` | `Password123!` | System Command Center, cross-tenant KPIs, organization suspension/reactivation, queues |
+| **Customer QA Tenant** | [http://localhost:5173/login](http://localhost:5173/login) | `/dashboard` | `qa-user@doot-test.com` | `Password123!` | Scoped strictly to `DOOT QA Test Organization` (inbox, templates, contacts, campaigns) |
+| **Customer Demo Tenant 1** | [http://localhost:5173/login](http://localhost:5173/login) | `/dashboard` | `admin@acme.com` | `Password123!` | Scoped strictly to `Acme Enterprises` |
+| **Customer Demo Tenant 2** | [http://localhost:5173/login](http://localhost:5173/login) | `/dashboard` | `ceo@globex.com` | `Password123!` | Scoped strictly to `Globex Corporation` |
 
-### Customer Tenant Features Tested
-1. **Workspace Switching**: Select between authorized organizations using the header tenant dropdown.
-2. **Meta WhatsApp Connection**: Connect WABA and registered phone lines.
-3. **Template Management**: Synchronize approved templates from Meta WhatsApp Manager and create new templates.
-4. **Contacts & CRM**: CSV bulk import with E.164 normalization and formula injection sanitization.
-5. **Customer Chat Inbox**: 24-hour service window timer and live conversation threads.
-6. **Campaigns**: Batch broadcast dispatches with rate limits and opt-out exclusion.
-7. **Webhooks & SSRF Defense**: Dispatch outbound webhooks with HMAC-SHA256 signatures and private IP filtering.
-8. **Automations**: No-code visual flow builder with DAG acyclic validation.
-9. **Support Tickets**: Open tickets directly with the platform engineering team.
+---
+
+## 4. How to Connect WhatsApp API / WABA in the User Admin Panel
+
+### Step-by-Step Customer Connection Workflow:
+1. Log in as a customer user at [http://localhost:5173/login](http://localhost:5173/login) (e.g. `qa-user@doot-test.com` / `Password123!`).
+2. In the left navigation sidebar, navigate to **Settings** $\to$ **WhatsApp Accounts** (or open [http://localhost:5173/meta](http://localhost:5173/meta)).
+3. Click the **"Connect WhatsApp Account"** button.
+4. Fill in the required official Meta Business assets:
+   - **Account Name**: e.g., `Official Customer Care Line`
+   - **Meta Business ID**: Your Meta Business Portfolio ID (from Meta Business Suite).
+   - **WhatsApp Business Account (WABA) ID**: Numeric WABA ID from Meta Developer Portal.
+   - **Phone Number ID**: 15/16 digit Phone Number ID assigned by Meta Cloud API.
+   - **Display Phone Number**: Canonical E.164 phone number (e.g., `+15551234567`).
+   - **Verified Business Name**: Approved display name registered with Meta.
+   - **System User Permanent Access Token**: Generated under Meta Business Settings $\to$ System Users with `whatsapp_business_messaging` and `whatsapp_business_management` permissions.
+5. Click **"Save & Connect"**:
+   - The backend validates the credentials via Meta Graph API `v21.0`.
+   - The System User token is encrypted at rest using AES-256-GCM with your `ENCRYPTION_MASTER_KEY_V1`.
+   - The raw token is discarded and never returned in API responses or frontend state.
+6. The phone number immediately appears in your active WhatsApp Accounts list, ready for template synchronization and inbox messaging.
+
+---
+
+## 5. How Platform Admin Oversees WhatsApp Connections & Tenant Reflection
+
+1. **Platform Owner Visibility**:
+   - The platform admin logs into [http://localhost:5173/admin](http://localhost:5173/admin).
+   - The admin can view platform-wide messaging statistics, active phone lines across all tenants, and BullMQ queue throughput.
+2. **Direct Reflection on Customer Side**:
+   - **Tenant Plans & Quotas**: If the platform admin upgrades a tenant's subscription plan from STARTER to GROWTH or ENTERPRISE, the customer portal immediately unlocks higher contact limits, additional phone line slots, and advanced bot automation nodes without requiring a page refresh.
+   - **Tenant Suspension**: If the platform admin suspends an organization from the Command Center (`POST /admin/organizations/:id/suspend`), the customer's outbound messaging and campaign dispatches are instantly halted with a clear policy notice, while data remains safe and preserved.
+   - **Account Reactivation**: When reactivated by the platform admin, all WhatsApp phone connections and scheduled campaigns automatically resume.
+
+---
+
+## 6. Real Meta Integration vs. Development Mock Mode
+
+| Behavior | Development / Test Mode | Production Live Mode |
+| :--- | :--- | :--- |
+| **Access Token Pattern** | Token containing `mock` or `test` | Valid Meta System User token starting with `EAAB...` |
+| **Meta Graph API Call** | Built-in offline fallback returns simulated schemas | Real HTTPS fetch to `https://graph.facebook.com/v21.0/` |
+| **Prerequisites** | None (runs completely offline) | Meta App ID, App Secret, verified WABA, and System User token |
