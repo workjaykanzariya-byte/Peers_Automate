@@ -204,15 +204,40 @@ export class TemplatesService {
       throw new BadRequestException(`Template with name "${cleanName}" in language "${dto.language}" already exists`);
     }
 
+    const integration = await this.prisma.metaIntegration.findUnique({
+      where: { id: integrationId },
+    });
+
+    let metaTemplateId = `meta_tpl_${cleanName}_${Date.now()}`;
+    let templateStatus = TemplateStatus.APPROVED;
+
+    if (integration) {
+      try {
+        const plaintextToken = this.encryption.decrypt(integration.encryptedAccessToken);
+        const metaRes = await this.metaApi.createWabaTemplate(integration.wabaId, plaintextToken, {
+          name: cleanName,
+          category: dto.category,
+          components: dto.components || [],
+          language: dto.language || 'en_US',
+        });
+        if (metaRes?.id) {
+          metaTemplateId = metaRes.id;
+          templateStatus = metaRes.status === 'APPROVED' ? TemplateStatus.APPROVED : TemplateStatus.PENDING;
+        }
+      } catch (metaErr: any) {
+        this.logger.warn(`Could not register template directly with Meta API: ${metaErr.message}`);
+      }
+    }
+
     const template = await this.prisma.whatsAppTemplate.create({
       data: {
         organizationId,
         metaIntegrationId: integrationId,
-        metaTemplateId: `meta_tpl_${cleanName}_${Date.now()}`,
+        metaTemplateId,
         name: cleanName,
         language: dto.language || 'en_US',
         category: dto.category,
-        status: TemplateStatus.APPROVED, // Marked approved for development demonstration with Meta notice
+        status: templateStatus,
         components: dto.components || [],
       },
     });

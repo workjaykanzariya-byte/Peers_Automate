@@ -22,7 +22,8 @@ interface Template {
   status: string;
   components: any;
   variableCount: number;
-  lastSyncedAt: string;
+  updatedAt?: string;
+  lastSyncedAt?: string;
 }
 
 export const TemplatesPage: React.FC = () => {
@@ -48,21 +49,28 @@ export const TemplatesPage: React.FC = () => {
     mutationFn: () => api.post('/templates/sync'),
     onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['templates'] });
-      alert(`Synchronized ${data?.syncedCount || 0} templates successfully from Meta!`);
+      alert(data?.message || `Synchronized ${data?.count ?? 0} templates successfully from Meta!`);
     },
-    onError: (err: any) => alert(err.message || 'Failed to sync templates with Meta'),
+    onError: (err: any) => {
+      const msg = Array.isArray(err.message) ? err.message.join(', ') : err.message || 'Failed to sync templates with Meta';
+      alert(`Sync error: ${msg}`);
+    },
   });
 
   const createDraftMutation = useMutation({
-    mutationFn: (data: any) => api.post('/templates/draft', data),
-    onSuccess: () => {
+    mutationFn: (data: any) => api.post('/templates', data),
+    onSuccess: (data: any) => {
       queryClient.invalidateQueries({ queryKey: ['templates'] });
+      alert(`Template "${name}" created successfully! Status: ${data?.status || 'APPROVED'}`);
       setIsCreateModalOpen(false);
       setName('');
-      setBodyText('');
-      setFooterText('');
+      setBodyText('Hello {{1}}, welcome to {{2}}! Your order is confirmed.');
+      setFooterText('Reply STOP to unsubscribe');
     },
-    onError: (err: any) => alert(err.message || 'Failed to save template draft'),
+    onError: (err: any) => {
+      const msg = Array.isArray(err.message) ? err.message.join(', ') : err.message || 'Failed to save template';
+      alert(`Error saving template: ${msg}`);
+    },
   });
 
   const filteredTemplates = templates.filter((t) => {
@@ -223,7 +231,7 @@ export const TemplatesPage: React.FC = () => {
               </div>
 
               <div className="pt-2 border-t border-slate-800/60 flex items-center justify-between text-[11px] text-slate-500">
-                <span>Synced: {new Date(template.lastSyncedAt).toLocaleDateString()}</span>
+                <span>Updated: {template.updatedAt || template.lastSyncedAt ? new Date(template.updatedAt || template.lastSyncedAt).toLocaleDateString() : 'Recent'}</span>
                 <button
                   onClick={() => setSelectedTemplate(template)}
                   className="flex items-center gap-1 text-emerald-400 hover:text-emerald-300 font-semibold"

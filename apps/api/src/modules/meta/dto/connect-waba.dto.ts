@@ -46,6 +46,16 @@ export class SendTestMessageDto {
 
   @ApiProperty({ example: '+15551234567' })
   @IsString()
-  @IsNotEmpty()
-  recipientPhone: string;
+  @IsOptional()
+  recipientPhone?: string;
+
+  @ApiProperty({ example: '+15551234567' })
+  @IsString()
+  @IsOptional()
+  recipient?: string;
+
+  @ApiProperty({ example: 'Hello from DOOT! Real test message' })
+  @IsString()
+  @IsOptional()
+  text?: string;
 }

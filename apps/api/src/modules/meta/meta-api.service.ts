@@ -152,6 +152,25 @@ export class MetaApiService {
   }
 
   /**
+   * Creates a message template in Meta WABA
+   */
+  async createWabaTemplate(
+    wabaId: string,
+    accessToken: string,
+    data: { name: string; category: string; components: any[]; language: string },
+  ) {
+    if (accessToken.includes('mock')) {
+      return { id: `meta_tpl_${data.name}_${Date.now()}`, status: 'APPROVED' };
+    }
+    const endpoint = `${wabaId}/message_templates`;
+    return this.request<{ id: string; status: string }>(endpoint, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify(data),
+    });
+  }
+
+  /**
    * Sends an approved template message to recipient phone
    */
   async sendTemplateMessage(

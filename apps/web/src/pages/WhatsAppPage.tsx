@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { api } from '../services/api';
 import {
@@ -15,6 +16,7 @@ import {
   Check,
   Building,
   Key,
+  FileCode,
 } from 'lucide-react';
 
 interface PhoneNumber {
@@ -120,6 +122,13 @@ export const WhatsAppPage: React.FC = () => {
           </p>
         </div>
         <div className="flex items-center gap-3">
+          <Link
+            to="/templates"
+            className="flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 transition shadow-sm"
+          >
+            <FileCode className="w-3.5 h-3.5" />
+            WhatsApp Templates
+          </Link>
           <button
             onClick={() => refetch()}
             disabled={isFetching}
@@ -225,7 +234,14 @@ export const WhatsAppPage: React.FC = () => {
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-3">
+                  <Link
+                    to="/templates"
+                    className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold rounded-lg bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 transition shadow-sm"
+                  >
+                    <FileCode className="w-3.5 h-3.5" />
+                    Manage & Sync Templates
+                  </Link>
                   <span className="text-xs text-slate-400">Connected: {new Date(account.createdAt).toLocaleDateString()}</span>
                 </div>
               </div>
@@ -450,7 +466,8 @@ export const WhatsAppPage: React.FC = () => {
               onSubmit={(e) => {
                 e.preventDefault();
                 testMessageMutation.mutate({
-                  phoneNumberId: selectedPhone.id,
+                  phoneNumberId: selectedPhone.phoneNumberId || selectedPhone.id,
+                  recipientPhone: testRecipient,
                   recipient: testRecipient,
                   text: testText,
                 });

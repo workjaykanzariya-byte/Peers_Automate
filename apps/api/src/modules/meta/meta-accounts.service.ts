@@ -124,10 +124,18 @@ export class MetaAccountsService {
   }
 
   async sendTestMessage(organizationId: string, userId: string, dto: SendTestMessageDto) {
+    const recipient = dto.recipientPhone || dto.recipient;
+    if (!recipient) {
+      throw new BadRequestException('Recipient phone number is required');
+    }
+
     const phone = await this.prisma.phoneNumber.findFirst({
       where: {
-        phoneNumberId: dto.phoneNumberId,
         organizationId,
+        OR: [
+          { phoneNumberId: dto.phoneNumberId },
+          { id: dto.phoneNumberId },
+        ],
       },
       include: {
         metaIntegration: true,
@@ -141,12 +149,12 @@ export class MetaAccountsService {
     // Decrypt provider access token
     const plaintextToken = this.encryption.decrypt(phone.metaIntegration.encryptedAccessToken);
 
-    const testBody = `Hello! This is a real diagnostic verification message from DOOT WhatsApp SaaS for ${phone.verifiedName || 'your business'}. Integration verified successfully at ${new Date().toUTCString()}.`;
+    const testBody = dto.text || `Hello! This is a real diagnostic verification message from DOOT WhatsApp SaaS for ${phone.verifiedName || 'your business'}. Integration verified successfully at ${new Date().toUTCString()}.`;
 
     const result = await this.metaApi.sendTextMessage(
       phone.phoneNumberId,
       plaintextToken,
-      dto.recipientPhone,
+      recipient,
       testBody,
     );
 
@@ -161,7 +169,7 @@ export class MetaAccountsService {
         resource: 'phone_number',
         resourceId: phone.id,
         metadata: {
-          recipientPhone: dto.recipientPhone,
+          recipientPhone: recipient,
           messageId,
         },
       },
@@ -170,7 +178,7 @@ export class MetaAccountsService {
     return {
       success: true,
       messageId,
-      recipientPhone: dto.recipientPhone,
+      recipientPhone: recipient,
       status: 'SUBMITTED',
       timestamp: new Date().toISOString(),
     };

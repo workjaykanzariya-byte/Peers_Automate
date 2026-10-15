@@ -53,6 +53,7 @@ export class TemplatesController {
   }
 
   @Post()
+  @Post('draft')
   @ApiOperation({ summary: 'Author and submit new template with components' })
   async createTemplate(
     @CurrentTenant() tenant: ITenantContext,
