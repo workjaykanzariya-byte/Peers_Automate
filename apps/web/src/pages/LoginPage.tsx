@@ -120,11 +120,27 @@ export const LoginPage: React.FC = () => {
             <div className="grid grid-cols-2 gap-2 text-xs">
               <button
                 type="button"
-                onClick={() => setDemoTenant('admin@acme.com')}
+                onClick={() => setDemoTenant('user@doot-test.com')}
                 className="p-2 rounded-lg bg-slate-950/80 border border-slate-800 hover:border-emerald-500/50 text-left transition"
               >
+                <div className="font-bold text-white">DOOT QA Tenant</div>
+                <div className="text-[10px] text-emerald-400">user@doot-test.com</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setDemoTenant('owner@doot.io')}
+                className="p-2 rounded-lg bg-slate-950/80 border border-slate-800 hover:border-purple-500/50 text-left transition"
+              >
+                <div className="font-bold text-white">Platform Owner Admin</div>
+                <div className="text-[10px] text-purple-400">owner@doot.io</div>
+              </button>
+              <button
+                type="button"
+                onClick={() => setDemoTenant('admin@acme.com')}
+                className="p-2 rounded-lg bg-slate-950/80 border border-slate-800 hover:border-blue-500/50 text-left transition"
+              >
                 <div className="font-bold text-white">Acme Enterprises</div>
-                <div className="text-[10px] text-emerald-400">admin@acme.com</div>
+                <div className="text-[10px] text-blue-400">admin@acme.com</div>
               </button>
               <button
                 type="button"
