@@ -20,7 +20,34 @@ import {
 export const SettingsPage: React.FC = () => {
   const queryClient = useQueryClient();
   const { activeOrg } = useAuth();
-  const [activeTab, setActiveTab] = useState<'GENERAL' | 'USAGE' | 'TEAM' | 'AUDIT'>('USAGE');
+  const [activeTab, setActiveTab] = useState<'USAGE' | 'INVOICES' | 'AI_ASSISTANT' | 'MESSENGER' | 'GENERAL' | 'TEAM' | 'AUDIT'>('USAGE');
+
+  // AI Assistant State
+  const [aiProvider, setAiProvider] = useState<'OPENAI' | 'ANTHROPIC' | 'GEMINI'>('OPENAI');
+  const [aiApiKey, setAiApiKey] = useState('');
+  const [aiInstructions, setAiInstructions] = useState('You are a helpful customer support agent for our company.');
+  const [aiEnabled, setAiEnabled] = useState(false);
+
+  // Fetch AI Config
+  const { data: aiConfig, refetch: refetchAi } = useQuery<any>({
+    queryKey: ['ai-config'],
+    queryFn: () => api.get('/ai/config'),
+  });
+
+  // Fetch Invoices
+  const { data: invoices = [] } = useQuery<any[]>({
+    queryKey: ['billing-invoices'],
+    queryFn: () => api.get('/billing/invoices'),
+  });
+
+  // Save AI Config Mutation
+  const saveAiMutation = useMutation({
+    mutationFn: (data: any) => api.post('/ai/config', data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['ai-config'] });
+      setAiApiKey('');
+    },
+  });
 
   // Org Settings State
   const [orgName, setOrgName] = useState(activeOrg?.name || '');
@@ -52,19 +79,22 @@ export const SettingsPage: React.FC = () => {
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2.5">
             <Settings className="w-6 h-6 text-emerald-400" />
-            Organization Settings & Quotas
+            Organization Settings & Integrations
           </h1>
           <p className="text-sm text-slate-400 mt-1">
-            Manage workspace configuration, plan limits, team access permissions, and security audit logs.
+            Manage workspace configuration, billing & invoices, AI assistant, team access, and audit logs.
           </p>
         </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex items-center gap-2 border-b border-slate-800 pb-2">
+      <div className="flex items-center gap-2 border-b border-slate-800 pb-2 overflow-x-auto">
         {[
-          { id: 'USAGE', label: 'Plan & Quota Limits', icon: CreditCard },
-          { id: 'GENERAL', label: 'Organization Profile', icon: Building },
+          { id: 'USAGE', label: 'Plan & Quotas', icon: CreditCard },
+          { id: 'INVOICES', label: 'Invoices & Billing', icon: CreditCard },
+          { id: 'AI_ASSISTANT', label: 'AI Assistant', icon: Sparkles },
+          { id: 'MESSENGER', label: 'Facebook Messenger', icon: Key },
+          { id: 'GENERAL', label: 'Workspace Profile', icon: Building },
           { id: 'TEAM', label: 'Team Members', icon: Users },
           { id: 'AUDIT', label: 'Audit Trail', icon: Shield },
         ].map((tab) => {
@@ -73,7 +103,7 @@ export const SettingsPage: React.FC = () => {
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id as any)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition ${
+              className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition whitespace-nowrap ${
                 activeTab === tab.id
                   ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
                   : 'text-slate-400 hover:text-slate-200 hover:bg-slate-900'
@@ -212,6 +242,191 @@ export const SettingsPage: React.FC = () => {
               </div>
               <p className="text-[11px] text-slate-500">
                 Active team members with role-based access control.
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tab Content: Invoices & Billing History */}
+      {activeTab === 'INVOICES' && (
+        <div className="space-y-6">
+          <div className="bg-[#0d1322]/80 border border-slate-800 rounded-2xl overflow-hidden shadow-xl">
+            <div className="p-5 border-b border-slate-800 bg-slate-900/60 flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold text-white uppercase tracking-wider">Subscription Invoices & Receipts</h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Official commercial invoices issued for your DOOT subscription.
+                </p>
+              </div>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-slate-800 bg-slate-900/90 text-slate-400 uppercase tracking-wider font-semibold">
+                    <th className="px-5 py-3.5">Invoice #</th>
+                    <th className="px-5 py-3.5">Billing Date</th>
+                    <th className="px-5 py-3.5">Amount</th>
+                    <th className="px-5 py-3.5">Status</th>
+                    <th className="px-5 py-3.5 text-right">Receipt Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-800/60">
+                  {invoices.length === 0 ? (
+                    <tr>
+                      <td colSpan={5} className="px-5 py-8 text-center text-slate-500">
+                        No invoice history available for this billing period.
+                      </td>
+                    </tr>
+                  ) : (
+                    invoices.map((inv: any) => (
+                      <tr key={inv.id} className="hover:bg-slate-800/30 transition">
+                        <td className="px-5 py-4 font-mono font-bold text-slate-200">{inv.invoiceNumber}</td>
+                        <td className="px-5 py-4 text-slate-400 text-[11px]">
+                          {new Date(inv.createdAt).toLocaleDateString()}
+                        </td>
+                        <td className="px-5 py-4 font-bold text-white">
+                          ${inv.amount} {inv.currency}
+                        </td>
+                        <td className="px-5 py-4">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                            {inv.status}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4 text-right">
+                          <button
+                            onClick={() => window.print()}
+                            className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold transition"
+                          >
+                            Print Receipt
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tab Content: AI Assistant */}
+      {activeTab === 'AI_ASSISTANT' && (
+        <div className="space-y-6">
+          <div className="p-6 rounded-2xl bg-[#0d1322]/80 border border-slate-800 shadow-xl space-y-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="text-base font-bold text-white flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-indigo-400" />
+                  AI Support Assistant Configuration
+                </h3>
+                <p className="text-xs text-slate-400 mt-0.5">
+                  Configure extensible LLM models to draft human-approved customer responses with automatic PII masking.
+                </p>
+              </div>
+
+              <span className="px-3 py-1 rounded-full text-xs font-bold bg-indigo-500/20 text-indigo-300 border border-indigo-500/30">
+                PII Masking Active
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">AI Provider</label>
+                <select
+                  value={aiProvider}
+                  onChange={(e) => setAiProvider(e.target.value as any)}
+                  className="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-slate-200 focus:outline-none"
+                >
+                  <option value="OPENAI">OpenAI (GPT-4o)</option>
+                  <option value="ANTHROPIC">Anthropic (Claude 3.5 Sonnet)</option>
+                  <option value="GEMINI">Google DeepMind (Gemini 1.5 Pro)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  API Key {aiConfig?.hasApiKey && '(Key encrypted & configured)'}
+                </label>
+                <input
+                  type="password"
+                  placeholder={aiConfig?.hasApiKey ? '••••••••••••••••••••••••' : 'Enter external provider API key...'}
+                  value={aiApiKey}
+                  onChange={(e) => setAiApiKey(e.target.value)}
+                  className="w-full p-2.5 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">System Instructions & Brand Tone</label>
+              <textarea
+                rows={4}
+                value={aiInstructions}
+                onChange={(e) => setAiInstructions(e.target.value)}
+                placeholder="Instruct the assistant on brand voice, greeting style, and escalation rules..."
+                className="w-full p-3 rounded-xl bg-slate-950 border border-slate-800 text-xs text-white focus:outline-none focus:border-indigo-500"
+              />
+            </div>
+
+            <div className="flex items-center justify-between pt-4 border-t border-slate-800">
+              <label className="flex items-center gap-2.5 text-xs text-slate-300 font-semibold cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={aiEnabled}
+                  onChange={(e) => setAiEnabled(e.target.checked)}
+                  className="w-4 h-4 rounded bg-slate-950 border-slate-800 text-indigo-500"
+                />
+                <span>Enable AI Assistant for Inbox suggested replies</span>
+              </label>
+
+              <button
+                onClick={() =>
+                  saveAiMutation.mutate({
+                    provider: aiProvider,
+                    apiKey: aiApiKey || undefined,
+                    systemInstructions: aiInstructions,
+                    isEnabled: aiEnabled,
+                  })
+                }
+                disabled={saveAiMutation.isPending}
+                className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition disabled:opacity-50"
+              >
+                {saveAiMutation.isPending ? 'Saving Config...' : 'Save AI Configuration'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tab Content: Facebook Messenger */}
+      {activeTab === 'MESSENGER' && (
+        <div className="space-y-6">
+          <div className="p-6 rounded-2xl bg-[#0d1322]/80 border border-slate-800 shadow-xl space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Key className="w-6 h-6 text-indigo-400" />
+                <div>
+                  <h3 className="text-base font-bold text-white">Facebook Messenger Platform</h3>
+                  <p className="text-xs text-slate-400">
+                    Connect an authorized Facebook Page for omnichannel live chat alongside WhatsApp.
+                  </p>
+                </div>
+              </div>
+
+              <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-800 text-slate-400 border border-slate-700">
+                Meta App Review Ready
+              </span>
+            </div>
+
+            <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-800 text-xs text-slate-300 space-y-2">
+              <p>
+                Facebook Messenger follows official Meta Platform guidelines. Page tokens are encrypted at rest with AES-256-GCM.
+              </p>
+              <p className="text-slate-400 text-[11px]">
+                Webhook URL: <code className="bg-slate-950 px-2 py-0.5 rounded text-indigo-300">/api/v1/messenger/webhook</code>
               </p>
             </div>
           </div>

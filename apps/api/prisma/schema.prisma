@@ -128,6 +128,9 @@ model User {
   refreshSessions RefreshSession[]
   assignedContacts Contact[]    @relation("AssignedContactUser")
   assignedConversations Conversation[] @relation("AssignedConversationUser")
+  createdTickets  SupportTicket[] @relation("TicketCreator")
+  assignedTickets SupportTicket[] @relation("TicketAssignee")
+  ticketComments  TicketComment[]
   auditLogs       AuditLog[]
 
   @@map("users")
@@ -178,6 +181,12 @@ model Organization {
   automationFlows     AutomationFlow[]
   contactImports      ContactImport[]
   auditLogs           AuditLog[]
+  subscription        Subscription?
+  invoices            Invoice[]
+  supportTickets      SupportTicket[]
+  notifications       Notification[]
+  aiAssistantConfig   AiAssistantConfig?
+  messengerIntegrations MessengerIntegration[]
 
   @@map("organizations")
 }
@@ -573,3 +582,172 @@ model AuditLog {
   @@index([userId, createdAt])
   @@map("audit_logs")
 }
+
+// ----------------------------------------------------
+// 12. SaaS Subscription Plans & Billing
+// ----------------------------------------------------
+model Plan {
+  id                  String         @id @default(uuid()) @db.Uuid
+  name                String         @db.VarChar(100)
+  tier                String         @unique @db.VarChar(50)
+  monthlyPrice        Decimal        @default(0) @map("monthly_price") @db.Decimal(10, 2)
+  annualPrice         Decimal        @default(0) @map("annual_price") @db.Decimal(10, 2)
+  currency            String         @default("USD") @db.VarChar(10)
+  maxContacts         Int            @default(1000) @map("max_contacts")
+  maxMonthlyMessages  Int            @default(2500) @map("max_monthly_messages")
+  maxPhoneNumbers     Int            @default(1) @map("max_phone_numbers")
+  maxTeamMembers      Int            @default(2) @map("max_team_members")
+  features            Json           @default("[]")
+  isActive            Boolean        @default(true) @map("is_active")
+  createdAt           DateTime       @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime       @updatedAt @map("updated_at") @db.Timestamptz
+
+  subscriptions       Subscription[]
+
+  @@map("plans")
+}
+
+model Subscription {
+  id                     String       @id @default(uuid()) @db.Uuid
+  organizationId         String       @unique @map("organization_id") @db.Uuid
+  planId                 String       @map("plan_id") @db.Uuid
+  status                 String       @default("TRIAL") @db.VarChar(50)
+  currentPeriodStart     DateTime     @default(now()) @map("current_period_start") @db.Timestamptz
+  currentPeriodEnd       DateTime     @map("current_period_end") @db.Timestamptz
+  cancelAtPeriodEnd      Boolean      @default(false) @map("cancel_at_period_end")
+  provider               String       @default("MANUAL") @db.VarChar(50)
+  providerSubscriptionId String?      @map("provider_subscription_id") @db.VarChar(255)
+  providerCustomerId     String?      @map("provider_customer_id") @db.VarChar(255)
+  createdAt              DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt              DateTime     @updatedAt @map("updated_at") @db.Timestamptz
+
+  organization           Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  plan                   Plan         @relation(fields: [planId], references: [id], onDelete: Restrict)
+  invoices               Invoice[]
+
+  @@map("subscriptions")
+}
+
+model Invoice {
+  id             String        @id @default(uuid()) @db.Uuid
+  organizationId String        @map("organization_id") @db.Uuid
+  subscriptionId String?       @map("subscription_id") @db.Uuid
+  invoiceNumber  String        @unique @map("invoice_number") @db.VarChar(100)
+  amount         Decimal       @db.Decimal(10, 2)
+  currency       String        @default("USD") @db.VarChar(10)
+  status         String        @default("PAID") @db.VarChar(50)
+  billingDate    DateTime      @default(now()) @map("billing_date") @db.Timestamptz
+  paidAt         DateTime?     @map("paid_at") @db.Timestamptz
+  pdfUrl         String?       @map("pdf_url") @db.Text
+  metadata       Json          @default("{}")
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz
+
+  organization   Organization  @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  subscription   Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+
+  @@index([organizationId, billingDate])
+  @@map("invoices")
+}
+
+// ----------------------------------------------------
+// 13. Support Tickets & Collaboration
+// ----------------------------------------------------
+model SupportTicket {
+  id              String          @id @default(uuid()) @db.Uuid
+  organizationId  String          @map("organization_id") @db.Uuid
+  userId          String          @map("user_id") @db.Uuid
+  ticketNumber    String          @unique @map("ticket_number") @db.VarChar(50)
+  subject         String          @db.VarChar(255)
+  description     String          @db.Text
+  category        String          @default("GENERAL") @db.VarChar(50)
+  priority        String          @default("MEDIUM") @db.VarChar(50)
+  status          String          @default("NEW") @db.VarChar(50)
+  assignedStaffId String?         @map("assigned_staff_id") @db.Uuid
+  createdAt       DateTime        @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt       DateTime        @updatedAt @map("updated_at") @db.Timestamptz
+
+  organization    Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  creator         User            @relation("TicketCreator", fields: [userId], references: [id], onDelete: Cascade)
+  assignedStaff   User?           @relation("TicketAssignee", fields: [assignedStaffId], references: [id], onDelete: SetNull)
+  comments        TicketComment[]
+
+  @@index([organizationId, status])
+  @@index([status, priority])
+  @@map("support_tickets")
+}
+
+model TicketComment {
+  id             String        @id @default(uuid()) @db.Uuid
+  ticketId       String        @map("ticket_id") @db.Uuid
+  userId         String        @map("user_id") @db.Uuid
+  isInternalNote Boolean       @default(false) @map("is_internal_note")
+  content        String        @db.Text
+  createdAt      DateTime      @default(now()) @map("created_at") @db.Timestamptz
+
+  ticket         SupportTicket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
+  author         User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([ticketId, createdAt])
+  @@map("ticket_comments")
+}
+
+// ----------------------------------------------------
+// 14. Notifications Center
+// ----------------------------------------------------
+model Notification {
+  id             String       @id @default(uuid()) @db.Uuid
+  organizationId String       @map("organization_id") @db.Uuid
+  userId         String?      @map("user_id") @db.Uuid
+  type           String       @db.VarChar(100)
+  title          String       @db.VarChar(255)
+  message        String       @db.Text
+  data           Json         @default("{}")
+  isRead         Boolean      @default(false) @map("is_read")
+  createdAt      DateTime     @default(now()) @map("created_at") @db.Timestamptz
+
+  organization   Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@index([organizationId, isRead])
+  @@map("notifications")
+}
+
+// ----------------------------------------------------
+// 15. AI Assistant & Knowledge Base
+// ----------------------------------------------------
+model AiAssistantConfig {
+  id                  String       @id @default(uuid()) @db.Uuid
+  organizationId      String       @unique @map("organization_id") @db.Uuid
+  provider            String       @default("OPENAI") @db.VarChar(50)
+  encryptedApiKey     String?      @map("encrypted_api_key") @db.Text
+  model               String       @default("gpt-4o") @db.VarChar(100)
+  systemInstructions  String?      @map("system_instructions") @db.Text
+  isEnabled           Boolean      @default(false) @map("is_enabled")
+  temperature         Decimal      @default(0.7) @db.Decimal(3, 2)
+  createdAt           DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt           DateTime     @updatedAt @map("updated_at") @db.Timestamptz
+
+  organization        Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@map("ai_assistant_configs")
+}
+
+// ----------------------------------------------------
+// 16. Facebook Messenger Integration
+// ----------------------------------------------------
+model MessengerIntegration {
+  id                 String       @id @default(uuid()) @db.Uuid
+  organizationId     String       @map("organization_id") @db.Uuid
+  pageId             String       @map("page_id") @db.VarChar(100)
+  pageName           String       @map("page_name") @db.VarChar(255)
+  encryptedPageToken String       @map("encrypted_page_token") @db.Text
+  status             String       @default("CONNECTED") @db.VarChar(50)
+  subscribedFields   Json         @default("[\"messages\",\"messaging_postbacks\"]") @map("subscribed_fields")
+  createdAt          DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  updatedAt          DateTime     @updatedAt @map("updated_at") @db.Timestamptz
+
+  organization       Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, pageId])
+  @@map("messenger_integrations")
+}
+

@@ -15,6 +15,12 @@ import { ConversationsModule } from './modules/conversations/conversations.modul
 import { CampaignsModule } from './modules/campaigns/campaigns.module';
 import { WebhooksModule } from './modules/webhooks/webhooks.module';
 import { UsageModule } from './modules/usage/usage.module';
+import { AdminModule } from './modules/admin/admin.module';
+import { BillingModule } from './modules/billing/billing.module';
+import { AutomationsModule } from './modules/automations/automations.module';
+import { MessengerModule } from './modules/messenger/messenger.module';
+import { AiModule } from './modules/ai/ai.module';
+import { SupportModule } from './modules/support/support.module';
 
 @Module({
   imports: [
@@ -42,6 +48,12 @@ import { UsageModule } from './modules/usage/usage.module';
     CampaignsModule,
     WebhooksModule,
     UsageModule,
+    AdminModule,
+    BillingModule,
+    AutomationsModule,
+    MessengerModule,
+    AiModule,
+    SupportModule,
   ],
 })
 export class AppModule {}

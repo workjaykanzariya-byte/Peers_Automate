@@ -302,7 +302,100 @@ async function main() {
     },
   });
 
+  // 3. Platform Super Admin (Owner Administration)
+  const platformAdmin = await prisma.user.upsert({
+    where: { email: 'owner@doot.io' },
+    update: { isPlatformAdmin: true },
+    create: {
+      email: 'owner@doot.io',
+      passwordHash,
+      firstName: 'Platform',
+      lastName: 'Architect',
+      isPlatformAdmin: true,
+    },
+  });
+
+  // 4. Commercial SaaS Plans
+  const starterPlan = await prisma.plan.upsert({
+    where: { tier: 'STARTER' },
+    update: {},
+    create: {
+      name: 'Starter Plan',
+      tier: 'STARTER',
+      monthlyPrice: 29.0,
+      annualPrice: 290.0,
+      currency: 'USD',
+      maxContacts: 1000,
+      maxMonthlyMessages: 2500,
+      maxPhoneNumbers: 1,
+      maxTeamMembers: 2,
+      features: ['basic_crm', 'standard_templates', 'campaigns', 'webhooks'],
+    },
+  });
+
+  const growthPlan = await prisma.plan.upsert({
+    where: { tier: 'GROWTH' },
+    update: {},
+    create: {
+      name: 'Growth Plan',
+      tier: 'GROWTH',
+      monthlyPrice: 79.0,
+      annualPrice: 790.0,
+      currency: 'USD',
+      maxContacts: 10000,
+      maxMonthlyMessages: 25000,
+      maxPhoneNumbers: 3,
+      maxTeamMembers: 10,
+      features: ['advanced_crm', 'custom_fields', 'csv_imports', 'bot_flows', 'priority_rate_limits'],
+    },
+  });
+
+  const enterprisePlan = await prisma.plan.upsert({
+    where: { tier: 'ENTERPRISE' },
+    update: {},
+    create: {
+      name: 'Enterprise Plan',
+      tier: 'ENTERPRISE',
+      monthlyPrice: 199.0,
+      annualPrice: 1990.0,
+      currency: 'USD',
+      maxContacts: 50000,
+      maxMonthlyMessages: 100000,
+      maxPhoneNumbers: 10,
+      maxTeamMembers: 999,
+      features: ['unlimited_team', 'custom_webhooks', 'dedicated_support', 'audit_retention', 'sla'],
+    },
+  });
+
+  // 5. Active Subscriptions
+  await prisma.subscription.upsert({
+    where: { organizationId: acmeOrg.id },
+    update: {},
+    create: {
+      organizationId: acmeOrg.id,
+      planId: growthPlan.id,
+      status: 'ACTIVE',
+      currentPeriodStart: new Date(),
+      currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      provider: 'MANUAL',
+    },
+  });
+
+  await prisma.subscription.upsert({
+    where: { organizationId: globexOrg.id },
+    update: {},
+    create: {
+      organizationId: globexOrg.id,
+      planId: starterPlan.id,
+      status: 'ACTIVE',
+      currentPeriodStart: new Date(),
+      currentPeriodEnd: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+      provider: 'MANUAL',
+    },
+  });
+
   console.log('Seeding completed successfully!');
+  console.log('Platform Owner Admin: owner@doot.io / Password123!');
   console.log('Tenant 1: Acme Enterprises (admin@acme.com / Password123!)');
   console.log('Tenant 2: Globex Corporation (ceo@globex.com / Password123!)');
 }

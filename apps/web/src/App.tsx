@@ -14,7 +14,9 @@ import { InboxPage } from './pages/InboxPage';
 import { CampaignsPage } from './pages/CampaignsPage';
 import { WebhooksPage } from './pages/WebhooksPage';
 import { SettingsPage } from './pages/SettingsPage';
-import { PlaceholderModulePage } from './pages/PlaceholderModulePage';
+import { AutomationsPage } from './pages/AutomationsPage';
+import { SupportPage } from './pages/SupportPage';
+import { AdminPage } from './pages/AdminPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -47,6 +49,17 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   return <>{children}</>;
 };
 
+const PlatformAdminRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, isLoading } = useAuth();
+
+  if (isLoading) return null;
+  if (!user || !user.isPlatformAdmin) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <>{children}</>;
+};
+
 export const App: React.FC = () => {
   return (
     <QueryClientProvider client={queryClient}>
@@ -68,13 +81,22 @@ export const App: React.FC = () => {
               <Route path="dashboard" element={<DashboardPage />} />
               <Route path="whatsapp" element={<WhatsAppPage />} />
               <Route path="inbox" element={<InboxPage />} />
-              <Route path="automations" element={<PlaceholderModulePage />} />
+              <Route path="automations" element={<AutomationsPage />} />
               <Route path="contacts" element={<ContactsPage />} />
               <Route path="leads" element={<LeadsPage />} />
               <Route path="templates" element={<TemplatesPage />} />
               <Route path="campaigns" element={<CampaignsPage />} />
               <Route path="webhooks" element={<WebhooksPage />} />
+              <Route path="support" element={<SupportPage />} />
               <Route path="settings" element={<SettingsPage />} />
+              <Route
+                path="admin"
+                element={
+                  <PlatformAdminRoute>
+                    <AdminPage />
+                  </PlatformAdminRoute>
+                }
+              />
             </Route>
 
             <Route path="*" element={<Navigate to="/dashboard" replace />} />

@@ -1,0 +1,75 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:18-alpine
+    container_name: doot-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: doot_app
+      POSTGRES_PASSWORD: StrongProductionPassword2026!
+      POSTGRES_DB: doot_production
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U doot_app -d doot_production"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:8-alpine
+    container_name: doot-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: api-production
+    container_name: doot-api
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      DATABASE_URL: postgresql://doot_app:StrongProductionPassword2026!@postgres:5432/doot_production?schema=public
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: production_jwt_secret_doot_saas_platform_2026
+      ENCRYPTION_KEY_V1: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+      ACTIVE_KEY_VERSION: v1
+    ports:
+      - "3000:3000"
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: web-production
+    container_name: doot-web
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - "80:80"
+
+volumes:
+  postgres_data:
+  redis_data:

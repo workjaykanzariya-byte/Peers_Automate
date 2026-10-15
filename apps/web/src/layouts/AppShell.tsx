@@ -19,6 +19,8 @@ import {
   AlertTriangle,
   Menu,
   X,
+  LifeBuoy,
+  ShieldAlert,
 } from 'lucide-react';
 
 export const AppShell: React.FC = () => {
@@ -37,6 +39,7 @@ export const AppShell: React.FC = () => {
     { label: 'WhatsApp Templates', icon: FileCode, path: '/templates' },
     { label: 'Campaigns & Bulk', icon: Send, path: '/campaigns' },
     { label: 'Webhooks & Logs', icon: Webhook, path: '/webhooks' },
+    { label: 'Support & Help', icon: LifeBuoy, path: '/support' },
     { label: 'Settings & Team', icon: Settings, path: '/settings' },
   ];
 
@@ -81,6 +84,25 @@ export const AppShell: React.FC = () => {
             );
           })}
         </nav>
+
+        {/* Platform Super Admin Link (Protected: Only visible to platform admins) */}
+        {user?.isPlatformAdmin && (
+          <div className="px-3 pb-2">
+            <NavLink
+              to="/admin"
+              className={({ isActive }) =>
+                `flex items-center gap-2.5 px-3 py-2 rounded-xl text-xs font-bold transition-all ${
+                  isActive
+                    ? 'bg-rose-500/20 text-rose-300 border border-rose-500/40 shadow-sm'
+                    : 'text-rose-400 bg-rose-500/10 hover:bg-rose-500/15 border border-rose-500/20'
+                }`
+              }
+            >
+              <ShieldAlert className="w-4 h-4 shrink-0 text-rose-400" />
+              <span>Platform Admin Panel</span>
+            </NavLink>
+          </div>
+        )}
 
         {/* Meta Platform Trust Badge */}
         <div className="p-4 mx-3 my-3 rounded-xl bg-slate-900/60 border border-slate-800 text-xs">
