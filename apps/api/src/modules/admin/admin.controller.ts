@@ -1,6 +1,7 @@
 import {
   Controller,
   Get,
+  Post,
   Patch,
   Put,
   Param,
@@ -28,6 +29,12 @@ export class AdminController {
     return this.adminService.getPlatformStats();
   }
 
+  @Get('stats')
+  @ApiOperation({ summary: 'Platform operational overview and KPI metrics (stats alias)' })
+  async getStats() {
+    return this.adminService.getPlatformStats();
+  }
+
   @Get('organizations')
   @ApiOperation({ summary: 'List all customer organizations across the platform' })
   async listOrganizations(
@@ -37,7 +44,7 @@ export class AdminController {
   ) {
     return this.adminService.listOrganizations(
       page ? parseInt(page, 10) : 1,
-      limit ? parseInt(limit, 10) : 20,
+      limit ? parseInt(limit, 10) : 50,
       search || '',
     );
   }
@@ -52,6 +59,36 @@ export class AdminController {
     return this.adminService.updateOrganizationStatus(
       orgId,
       body.status,
+      body.reason,
+      user.id,
+    );
+  }
+
+  @Post('organizations/:id/suspend')
+  @ApiOperation({ summary: 'Suspend customer organization workspace' })
+  async suspendOrg(
+    @Param('id') orgId: string,
+    @Body() body: { reason: string },
+    @CurrentUser() user: IAuthUser,
+  ) {
+    return this.adminService.updateOrganizationStatus(
+      orgId,
+      OrganizationStatus.SUSPENDED,
+      body.reason,
+      user.id,
+    );
+  }
+
+  @Post('organizations/:id/reactivate')
+  @ApiOperation({ summary: 'Reactivate customer organization workspace' })
+  async reactivateOrg(
+    @Param('id') orgId: string,
+    @Body() body: { reason: string },
+    @CurrentUser() user: IAuthUser,
+  ) {
+    return this.adminService.updateOrganizationStatus(
+      orgId,
+      OrganizationStatus.ACTIVE,
       body.reason,
       user.id,
     );

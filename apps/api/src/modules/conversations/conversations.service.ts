@@ -165,6 +165,8 @@ export class ConversationsService {
         direction: m.direction,
         type: m.type,
         body: m.body,
+        content: m.body,
+        text: m.body,
         mediaUrl: m.mediaUrl,
         status: m.status,
         errorCode: m.errorCode,

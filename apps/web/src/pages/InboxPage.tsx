@@ -285,7 +285,7 @@ export const InboxPage: React.FC = () => {
                             <FileCode className="w-3 h-3" /> Template Message
                           </div>
                         )}
-                        <div className="whitespace-pre-wrap">{msg.content}</div>
+                        <div className="whitespace-pre-wrap">{msg.content || (msg as any).body || (msg as any).text || ''}</div>
                         <div
                           className={`flex items-center justify-end gap-1 mt-1 text-[9px] ${
                             isOut ? 'text-emerald-200' : 'text-slate-400'

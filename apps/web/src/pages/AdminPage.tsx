@@ -152,7 +152,10 @@ export const AdminPage: React.FC = () => {
     },
   });
 
-  const filteredOrs = (orgs || []).filter((o) => {
+  const orgList: OrgItem[] = Array.isArray(orgs) ? orgs : (orgs as any)?.data || [];
+  const userList: any[] = Array.isArray(users) ? users : (users as any)?.data || [];
+
+  const filteredOrs = orgList.filter((o) => {
     const matchesSearch = o.name.toLowerCase().includes(searchTerm.toLowerCase()) || o.slug.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === 'ALL' || o.status === statusFilter;
     return matchesSearch && matchesStatus;
@@ -493,7 +496,7 @@ export const AdminPage: React.FC = () => {
         <div className="rounded-2xl border border-slate-800 bg-[#0d1322]/80 overflow-hidden shadow-xl">
           <div className="p-4 border-b border-slate-800 bg-slate-900/60 flex items-center justify-between">
             <h3 className="text-xs font-bold uppercase tracking-wider text-slate-300">All Registered Users Across DOOT</h3>
-            <span className="text-xs text-slate-400 font-mono">{(users || []).length} registered accounts</span>
+            <span className="text-xs text-slate-400 font-mono">{userList.length} registered accounts</span>
           </div>
           <div className="overflow-x-auto">
             <table className="w-full text-left text-xs">
@@ -514,7 +517,7 @@ export const AdminPage: React.FC = () => {
                     </td>
                   </tr>
                 ) : (
-                  (users || []).map((u) => (
+                  userList.map((u) => (
                     <tr key={u.id} className="hover:bg-slate-800/30 transition">
                       <td className="px-5 py-4 font-semibold text-slate-200">
                         {u.firstName} {u.lastName}
