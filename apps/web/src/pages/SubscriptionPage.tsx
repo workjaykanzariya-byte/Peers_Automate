@@ -646,13 +646,13 @@ export const SubscriptionPage: React.FC = () => {
                           <div className="flex items-center gap-2">
                             <Check className="w-4 h-4 text-emerald-500 shrink-0" />
                             <span>
-                              <strong>{p.maxContacts.toLocaleString()}</strong> WhatsApp Contacts
+                              <strong>{Number(p.maxContacts || 0).toLocaleString('en-IN')}</strong> WhatsApp Contacts
                             </span>
                           </div>
                           <div className="flex items-center gap-2">
                             <Check className="w-4 h-4 text-emerald-500 shrink-0" />
                             <span>
-                              <strong>{p.maxMonthlyMessages.toLocaleString()}</strong> Messages / Month
+                              <strong>{Number(p.maxMonthlyMessages || 0).toLocaleString('en-IN')}</strong> Messages / Month
                             </span>
                           </div>
                           <div className="flex items-center gap-2">
@@ -934,3 +934,4 @@ export const SubscriptionPage: React.FC = () => {
 };
 
 export default SubscriptionPage;
+

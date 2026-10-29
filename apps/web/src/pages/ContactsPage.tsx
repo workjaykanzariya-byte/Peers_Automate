@@ -204,10 +204,10 @@ export const ContactsPage: React.FC = () => {
   });
 
   const toggleSelectAll = () => {
-    if (selectedContacts.length === (contactsData?.data.length || 0)) {
+    if (selectedContacts.length === (contactsData?.data?.length || 0)) {
       setSelectedContacts([]);
     } else {
-      setSelectedContacts(contactsData?.data.map((c) => c.id) || []);
+      setSelectedContacts(contactsData?.data?.map((c) => c.id) || []);
     }
   };
 
@@ -309,7 +309,7 @@ export const ContactsPage: React.FC = () => {
               <tr>
                 <th className="py-3.5 px-4 w-10">
                   <button onClick={toggleSelectAll} className="text-slate-400 hover:text-slate-700 dark:hover:text-white">
-                    {contactsData?.data && selectedContacts.length === contactsData.data.length && contactsData.data.length > 0 ? (
+                    {Array.isArray(contactsData?.data) && selectedContacts.length === contactsData.data.length && contactsData.data.length > 0 ? (
                       <CheckSquare className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                     ) : (
                       <Square className="w-4 h-4" />
@@ -332,14 +332,14 @@ export const ContactsPage: React.FC = () => {
                     Loading contacts directory...
                   </td>
                 </tr>
-              ) : contactsData?.data.length === 0 ? (
+              ) : (!contactsData?.data || !Array.isArray(contactsData.data) || contactsData.data.length === 0) ? (
                 <tr>
                   <td colSpan={7} className="py-12 text-center text-slate-500">
                     No contacts found matching your criteria.
                   </td>
                 </tr>
               ) : (
-                contactsData?.data.map((contact) => (
+                contactsData.data.map((contact) => (
                   <tr key={contact.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition">
                     <td className="py-3.5 px-4">
                       <button

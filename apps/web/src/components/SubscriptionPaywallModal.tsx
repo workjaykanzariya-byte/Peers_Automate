@@ -293,9 +293,9 @@ export const SubscriptionPaywallModal: React.FC<SubscriptionPaywallModalProps> =
                 </div>
 
                 <div className="mt-3 pt-2.5 border-t border-slate-200/60 dark:border-slate-800 text-[11px] text-slate-600 dark:text-slate-400 space-y-1">
-                  <div>• {p.maxContacts.toLocaleString()} Contacts</div>
-                  <div>• {p.maxMonthlyMessages.toLocaleString()} Messages</div>
-                  <div>• {p.maxPhoneNumbers} WhatsApp Line</div>
+                  <div>• {Number(p.maxContacts || 0).toLocaleString('en-IN')} Contacts</div>
+                  <div>• {Number(p.maxMonthlyMessages || 0).toLocaleString('en-IN')} Messages</div>
+                  <div>• {p.maxPhoneNumbers || 1} WhatsApp Line</div>
                 </div>
               </div>
             );
@@ -361,3 +361,4 @@ export const SubscriptionPaywallModal: React.FC<SubscriptionPaywallModalProps> =
     </div>
   );
 };
+
