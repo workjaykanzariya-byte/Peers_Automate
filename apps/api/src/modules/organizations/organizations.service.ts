@@ -126,4 +126,38 @@ export class OrganizationsService {
       joinedAt: m.createdAt,
     }));
   }
+
+  async updateCurrentOrganization(organizationId: string, dto: any, userId?: string) {
+    const updateData: any = {};
+    if (dto.name && dto.name.trim()) updateData.name = dto.name.trim();
+    if (dto.timezone && dto.timezone.trim()) updateData.timezone = dto.timezone.trim();
+    if (dto.settings) updateData.settings = dto.settings;
+
+    const updated = await this.prisma.organization.update({
+      where: { id: organizationId },
+      data: {
+        ...updateData,
+        updatedAt: new Date(),
+      },
+    });
+
+    if (userId) {
+      try {
+        await this.prisma.auditLog.create({
+          data: {
+            organizationId,
+            userId,
+            action: 'UPDATE_ORGANIZATION_SETTINGS',
+            resource: 'organization',
+            resourceId: organizationId,
+            metadata: { updatedFields: Object.keys(updateData) },
+          },
+        });
+      } catch (e) {
+        // fail-safe
+      }
+    }
+
+    return updated;
+  }
 }

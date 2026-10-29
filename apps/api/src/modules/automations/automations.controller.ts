@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Put, Patch, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Put, Patch, Delete, Body, Param, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { AutomationsService, CreateFlowDto } from './automations.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -17,6 +17,21 @@ export class AutomationsController {
   @ApiOperation({ summary: 'List customer organization automation bot flows' })
   async listFlows(@CurrentTenant() tenant: ITenantContext) {
     return this.automationsService.listFlows(tenant.organizationId);
+  }
+
+  @Get('templates')
+  @ApiOperation({ summary: 'List pre-trained bot flow templates' })
+  listTemplates() {
+    return this.automationsService.listTemplates();
+  }
+
+  @Post('templates/install')
+  @ApiOperation({ summary: 'Install and activate pre-trained bot flow' })
+  async installTemplate(
+    @CurrentTenant() tenant: ITenantContext,
+    @Body('templateKey') templateKey: string,
+  ) {
+    return this.automationsService.installTemplate(tenant.organizationId, templateKey);
   }
 
   @Get(':id')
@@ -44,8 +59,27 @@ export class AutomationsController {
     return this.automationsService.updateFlow(tenant.organizationId, id, body);
   }
 
+  @Delete(':id')
+  @ApiOperation({ summary: 'Delete bot flow' })
+  async deleteFlow(
+    @CurrentTenant() tenant: ITenantContext,
+    @Param('id') id: string,
+  ) {
+    return this.automationsService.deleteFlow(tenant.organizationId, id);
+  }
+
   @Patch(':id/status')
   @ApiOperation({ summary: 'Activate or deactivate bot flow' })
+  async setStatus(
+    @CurrentTenant() tenant: ITenantContext,
+    @Param('id') id: string,
+    @Body('isActive') isActive: boolean,
+  ) {
+    return this.automationsService.toggleActive(tenant.organizationId, id, isActive);
+  }
+
+  @Patch(':id/toggle')
+  @ApiOperation({ summary: 'Toggle active status of bot flow' })
   async toggleActive(
     @CurrentTenant() tenant: ITenantContext,
     @Param('id') id: string,
@@ -59,7 +93,7 @@ export class AutomationsController {
   async simulateFlow(
     @CurrentTenant() tenant: ITenantContext,
     @Param('id') id: string,
-    @Body() body: { messageText: string; contactPhone?: string },
+    @Body() body: { messageText: string; contactPhone?: string; contactName?: string },
   ) {
     return this.automationsService.simulateFlow(tenant.organizationId, id, body);
   }

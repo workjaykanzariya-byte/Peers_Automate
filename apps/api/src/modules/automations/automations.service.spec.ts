@@ -16,7 +16,18 @@ describe('AutomationsService', () => {
         delete: jest.fn(),
       },
     };
-    service = new AutomationsService(mockPrisma as unknown as PrismaService);
+    const mockEncryption: any = {
+      encrypt: jest.fn(),
+      decrypt: jest.fn((str) => str),
+    };
+    const mockMetaApi: any = {
+      sendTextMessage: jest.fn(),
+    };
+    service = new AutomationsService(
+      mockPrisma as unknown as PrismaService,
+      mockEncryption,
+      mockMetaApi,
+    );
   });
 
   describe('validateFlowGraph', () => {

@@ -215,7 +215,7 @@ export class LeadsController {
   async updateLeadStage(
     @CurrentTenant() tenant: ITenantContext,
     @Param('id') contactId: string,
-    @Body() body: { stage: LeadStatus; notes?: string; priority?: string; followUpDate?: string },
+    @Body() body: { stage: LeadStatus; notes?: string; priority?: string; followUpDate?: string; dealValue?: number },
   ) {
     return this.leadsService.updateLeadStage(
       tenant.organizationId,
@@ -224,6 +224,7 @@ export class LeadsController {
       body.notes,
       body.priority,
       body.followUpDate,
+      body.dealValue,
     );
   }
 }

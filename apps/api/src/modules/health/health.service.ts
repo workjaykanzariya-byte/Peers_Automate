@@ -25,6 +25,9 @@ export class HealthService {
         connectTimeout: 2000,
         maxRetriesPerRequest: 1,
       });
+      this.redisClient.on('error', (e) => {
+        this.logger.debug(`Redis health check connection: ${e.message}`);
+      });
     } catch (e: any) {
       this.logger.error(`Redis init error: ${e.message}`);
     }

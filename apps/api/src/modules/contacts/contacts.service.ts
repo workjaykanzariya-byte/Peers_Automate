@@ -162,6 +162,7 @@ export class ContactsService {
           priority: dto.priority || 'MEDIUM',
           notes: dto.notes,
           followUpDate: dto.followUpDate ? new Date(dto.followUpDate) : undefined,
+          customFields: dto.customFields || {},
         },
       });
 
@@ -220,6 +221,7 @@ export class ContactsService {
           notes: dto.notes,
           followUpDate: dto.followUpDate ? new Date(dto.followUpDate) : undefined,
           isBlocked: dto.isBlocked !== undefined ? dto.isBlocked : contact.isBlocked,
+          customFields: dto.customFields !== undefined ? dto.customFields : contact.customFields,
         },
       });
 

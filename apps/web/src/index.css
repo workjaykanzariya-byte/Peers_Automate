@@ -1,7 +1,10 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 @layer base {
   :root, html.light {
+    color-scheme: light;
     --bg-main: #f8fafc;
     --bg-card: #ffffff;
     --bg-card-subtle: #f1f5f9;
@@ -13,6 +16,7 @@
   }
 
   html.dark {
+    color-scheme: dark;
     --bg-main: #090d16;
     --bg-card: #0d1322;
     --bg-card-subtle: #111827;

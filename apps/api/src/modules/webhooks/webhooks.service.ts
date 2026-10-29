@@ -105,6 +105,57 @@ export class WebhooksService {
     return { message: 'Webhook endpoint removed' };
   }
 
+  async updateEndpoint(
+    organizationId: string,
+    id: string,
+    dto: Partial<CreateWebhookEndpointDto> & { isActive?: boolean },
+    userId?: string,
+  ) {
+    const ep = await this.prisma.webhookEndpoint.findFirst({
+      where: { id, organizationId },
+    });
+
+    if (!ep) {
+      throw new NotFoundException('Webhook endpoint not found');
+    }
+
+    if (dto.url && dto.url !== ep.url) {
+      await this.ssrfService.validateUrl(dto.url);
+    }
+
+    const updated = await this.prisma.webhookEndpoint.update({
+      where: { id: ep.id },
+      data: {
+        ...(dto.name ? { name: dto.name.trim() } : {}),
+        ...(dto.url ? { url: dto.url.trim() } : {}),
+        ...(dto.secret !== undefined ? { secret: dto.secret.trim() } : {}),
+        ...(dto.description !== undefined ? { description: dto.description?.trim() } : {}),
+        ...(dto.events ? { events: dto.events } : {}),
+        ...(dto.isActive !== undefined ? { isActive: dto.isActive } : {}),
+        updatedAt: new Date(),
+      },
+    });
+
+    if (userId) {
+      try {
+        await this.prisma.auditLog.create({
+          data: {
+            organizationId,
+            userId,
+            action: 'UPDATE_WEBHOOK_ENDPOINT',
+            resource: 'webhook_endpoint',
+            resourceId: id,
+            metadata: { name: updated.name, url: updated.url, isActive: updated.isActive },
+          },
+        });
+      } catch (e) {
+        // ignore audit log failure
+      }
+    }
+
+    return updated;
+  }
+
   /**
    * Dispatches real-time event notification to configured outbound endpoints with HMAC signature
    */
@@ -157,6 +208,7 @@ export class WebhooksService {
         headers: {
           'Content-Type': 'application/json',
           'X-DOOT-Signature': `sha256=${signature}`,
+          'X-DOOT-Verify-Token': endpoint.secret || '',
           'X-DOOT-Event': eventName,
           'X-DOOT-Delivery-ID': eventId,
         },
@@ -263,4 +315,97 @@ export class WebhooksService {
       testVerification: true,
     });
   }
+
+  async listMessageLogs(
+    organizationId: string,
+    page: number = 1,
+    limit: number = 50,
+    status?: string,
+    search?: string,
+    direction?: string,
+  ) {
+    const skip = (page - 1) * limit;
+    const where: any = { organizationId };
+
+    if (direction && direction !== 'ALL') {
+      where.direction = direction;
+    }
+
+    if (status && status !== 'ALL') {
+      where.status = status;
+    }
+
+    if (search) {
+      const s = search.trim();
+      where.OR = [
+        { metaMessageId: { contains: s, mode: 'insensitive' } },
+        { body: { contains: s, mode: 'insensitive' } },
+        { conversation: { contact: { phone: { contains: s, mode: 'insensitive' } } } },
+      ];
+    }
+
+    const [total, messages] = await Promise.all([
+      this.prisma.message.count({ where }),
+      this.prisma.message.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { createdAt: 'desc' },
+        include: {
+          conversation: {
+            include: {
+              contact: {
+                select: {
+                  id: true,
+                  phone: true,
+                  firstName: true,
+                  lastName: true,
+                },
+              },
+              phoneNumber: {
+                select: {
+                  displayPhoneNumber: true,
+                  verifiedName: true,
+                },
+              },
+            },
+          },
+        },
+      }),
+    ]);
+
+    return {
+      data: messages.map((m) => {
+        const isOutbound = m.direction === 'OUTBOUND';
+        const contactName = `${m.conversation?.contact?.firstName || ''} ${m.conversation?.contact?.lastName || ''}`.trim() || m.conversation?.contact?.phone || 'Customer';
+        const systemName = m.conversation?.phoneNumber?.verifiedName || 'Peers Automate';
+
+        return {
+          id: m.id,
+          metaMessageId: m.metaMessageId,
+          direction: m.direction,
+          type: m.type,
+          body: m.body,
+          senderPhone: isOutbound ? (m.conversation?.phoneNumber?.displayPhoneNumber || 'System') : (m.conversation?.contact?.phone || 'Customer'),
+          senderName: isOutbound ? systemName : contactName,
+          recipientPhone: isOutbound ? (m.conversation?.contact?.phone || '—') : (m.conversation?.phoneNumber?.displayPhoneNumber || 'System'),
+          recipientName: isOutbound ? contactName : systemName,
+          status: (m.readAt || m.status === 'READ') ? 'READ' : m.status,
+          errorCode: m.errorCode,
+          errorMessage: m.errorMessage,
+          sentAt: m.sentAt,
+          deliveredAt: m.deliveredAt,
+          readAt: m.readAt,
+          createdAt: m.createdAt,
+        };
+      }),
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit) || 1,
+      },
+    };
+  }
 }
+

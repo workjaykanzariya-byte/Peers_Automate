@@ -13,6 +13,7 @@ describe('MetaWebhookService Verification & Signature Security', () => {
   beforeEach(() => {
     mockPrisma = {
       metaAccount: { findFirst: jest.fn() },
+      metaIntegration: { findFirst: jest.fn().mockResolvedValue(null), findMany: jest.fn().mockResolvedValue([]) },
       phoneNumber: { findFirst: jest.fn() },
       contact: { findFirst: jest.fn(), create: jest.fn() },
       conversation: { findFirst: jest.fn(), create: jest.fn(), update: jest.fn() },
@@ -27,29 +28,39 @@ describe('MetaWebhookService Verification & Signature Security', () => {
       }),
     };
 
+    const mockWebhooksService = {
+      dispatchEvent: jest.fn(),
+    };
+
+    const mockAutomationsService = {
+      handleInboundMessage: jest.fn(),
+    };
+
     webhookService = new MetaWebhookService(
       mockPrisma as any,
       mockConfig as unknown as ConfigService,
+      mockWebhooksService as any,
+      mockAutomationsService as any,
     );
   });
 
   describe('Meta Subscription Challenge Handshake', () => {
-    it('returns hub.challenge when mode is subscribe and token matches', () => {
+    it('returns hub.challenge when mode is subscribe and token matches', async () => {
       const challenge = '1158201444';
-      const result = webhookService.verifyHandshake('subscribe', VERIFY_TOKEN, challenge);
+      const result = await webhookService.verifyHandshake('subscribe', VERIFY_TOKEN, challenge);
       expect(result).toBe(challenge);
     });
 
-    it('throws UnauthorizedException when token does not match', () => {
-      expect(() =>
+    it('throws UnauthorizedException when token does not match', async () => {
+      await expect(
         webhookService.verifyHandshake('subscribe', 'wrong_token', '1158201444'),
-      ).toThrow(UnauthorizedException);
+      ).rejects.toThrow(UnauthorizedException);
     });
 
-    it('throws UnauthorizedException when mode is not subscribe', () => {
-      expect(() =>
+    it('throws UnauthorizedException when mode is not subscribe', async () => {
+      await expect(
         webhookService.verifyHandshake('invalid_mode', VERIFY_TOKEN, '1158201444'),
-      ).toThrow(UnauthorizedException);
+      ).rejects.toThrow(UnauthorizedException);
     });
   });
 

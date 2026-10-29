@@ -220,27 +220,27 @@ export const ContactsPage: React.FC = () => {
   return (
     <div className="space-y-6">
       {/* Top Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-800 pb-5">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-200 dark:border-slate-800 pb-5">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-white flex items-center gap-2.5">
-            <Users className="w-6 h-6 text-emerald-400" />
+          <h1 className="text-2xl font-bold tracking-tight text-slate-900 dark:text-white flex items-center gap-2.5">
+            <Users className="w-6 h-6 text-emerald-600 dark:text-emerald-400" />
             Contact Directory
           </h1>
-          <p className="text-sm text-slate-400 mt-1">
+          <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400 mt-1">
             Manage your audience, international WhatsApp phone records, tags, and asynchronous CSV imports.
           </p>
         </div>
         <div className="flex items-center gap-3">
           <button
             onClick={() => setIsImportModalOpen(true)}
-            className="flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition"
+            className="flex items-center gap-2 px-3.5 py-2 text-xs font-semibold rounded-xl bg-white dark:bg-slate-800 hover:bg-slate-50 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 border border-slate-200 dark:border-slate-700 transition shadow-xs"
           >
-            <Upload className="w-3.5 h-3.5 text-emerald-400" />
+            <Upload className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
             Import CSV
           </button>
           <button
             onClick={() => setIsAddModalOpen(true)}
-            className="flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 transition shadow-lg shadow-emerald-500/20"
+            className="flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white transition shadow-sm"
           >
             <Plus className="w-4 h-4" />
             Add Contact
@@ -249,9 +249,9 @@ export const ContactsPage: React.FC = () => {
       </div>
 
       {/* Search and Filters Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-slate-900/60 p-4 rounded-xl border border-slate-800">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white dark:bg-slate-900/60 p-4 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-xs">
         <div className="relative flex-1 max-w-md">
-          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+          <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             type="text"
             placeholder="Search by name, phone (+E.164), email, or company..."
@@ -260,15 +260,15 @@ export const ContactsPage: React.FC = () => {
               setSearch(e.target.value);
               setPage(1);
             }}
-            className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-4 py-2 text-xs text-slate-200 focus:outline-none focus:border-emerald-500"
+            className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl pl-9 pr-4 py-2 text-xs text-slate-900 dark:text-slate-200 focus:outline-none focus:border-emerald-500"
           />
         </div>
 
         {/* Bulk Action Controls */}
         {selectedContacts.length > 0 && (
-          <div className="flex items-center gap-2 text-xs bg-slate-800/80 px-3 py-1.5 rounded-lg border border-slate-700 animate-fade-in">
-            <span className="font-semibold text-emerald-400">{selectedContacts.length} selected</span>
-            <div className="h-4 w-px bg-slate-700 mx-1" />
+          <div className="flex items-center gap-2 text-xs bg-slate-100 dark:bg-slate-800/80 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 animate-fade-in">
+            <span className="font-semibold text-emerald-700 dark:text-emerald-400">{selectedContacts.length} selected</span>
+            <div className="h-4 w-px bg-slate-300 dark:bg-slate-700 mx-1" />
             <button
               onClick={() => {
                 const tag = prompt('Enter tag name to add to selected contacts:');
@@ -280,7 +280,7 @@ export const ContactsPage: React.FC = () => {
                   });
                 }
               }}
-              className="px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 text-slate-200 font-medium"
+              className="px-2.5 py-1 rounded-lg bg-white dark:bg-slate-700 hover:bg-slate-50 dark:hover:bg-slate-600 text-slate-700 dark:text-slate-200 font-semibold border border-slate-200 dark:border-transparent text-xs"
             >
               Add Tag
             </button>
@@ -293,7 +293,7 @@ export const ContactsPage: React.FC = () => {
                   });
                 }
               }}
-              className="px-2 py-1 rounded bg-rose-500/20 hover:bg-rose-500/30 text-rose-400 font-medium"
+              className="px-2.5 py-1 rounded-lg bg-rose-50 dark:bg-rose-500/20 hover:bg-rose-100 dark:hover:bg-rose-500/30 text-rose-600 dark:text-rose-400 font-semibold border border-rose-200 dark:border-transparent text-xs"
             >
               Delete
             </button>
@@ -302,33 +302,33 @@ export const ContactsPage: React.FC = () => {
       </div>
 
       {/* Contacts Table */}
-      <div className="bg-slate-900/70 border border-slate-800/80 rounded-2xl overflow-hidden shadow-xl">
+      <div className="bg-white dark:bg-slate-900/70 border border-slate-200 dark:border-slate-800/80 rounded-2xl overflow-hidden shadow-xs">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs text-slate-300">
-            <thead className="bg-slate-950/80 text-[11px] uppercase tracking-wider text-slate-400 border-b border-slate-800">
+          <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
+            <thead className="bg-slate-50/90 dark:bg-slate-950/80 text-[11px] uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 font-bold">
               <tr>
-                <th className="py-3 px-4 w-10">
-                  <button onClick={toggleSelectAll} className="text-slate-400 hover:text-white">
+                <th className="py-3.5 px-4 w-10">
+                  <button onClick={toggleSelectAll} className="text-slate-400 hover:text-slate-700 dark:hover:text-white">
                     {contactsData?.data && selectedContacts.length === contactsData.data.length && contactsData.data.length > 0 ? (
-                      <CheckSquare className="w-4 h-4 text-emerald-400" />
+                      <CheckSquare className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                     ) : (
                       <Square className="w-4 h-4" />
                     )}
                   </button>
                 </th>
-                <th className="py-3 px-4 font-semibold">Contact / Phone</th>
-                <th className="py-3 px-4 font-semibold">Company / Email</th>
-                <th className="py-3 px-4 font-semibold">Tags</th>
-                <th className="py-3 px-4 font-semibold">Lead Status</th>
-                <th className="py-3 px-4 font-semibold">Consent</th>
-                <th className="py-3 px-4 font-semibold">Created</th>
+                <th className="py-3.5 px-4 font-bold">Contact / Phone</th>
+                <th className="py-3.5 px-4 font-bold">Company / Email</th>
+                <th className="py-3.5 px-4 font-bold">Tags</th>
+                <th className="py-3.5 px-4 font-bold">Lead Status</th>
+                <th className="py-3.5 px-4 font-bold">Consent</th>
+                <th className="py-3.5 px-4 font-bold">Created</th>
               </tr>
             </thead>
-            <tbody className="divide-y divide-slate-800/60">
+            <tbody className="divide-y divide-slate-200/70 dark:divide-slate-800/60">
               {isLoadingContacts ? (
                 <tr>
                   <td colSpan={7} className="py-12 text-center text-slate-500">
-                    <div className="w-6 h-6 border-2 border-emerald-500/20 border-t-emerald-400 rounded-full animate-spin mx-auto mb-2" />
+                    <div className="w-6 h-6 border-2 border-emerald-500/20 border-t-emerald-600 rounded-full animate-spin mx-auto mb-2" />
                     Loading contacts directory...
                   </td>
                 </tr>
@@ -340,71 +340,71 @@ export const ContactsPage: React.FC = () => {
                 </tr>
               ) : (
                 contactsData?.data.map((contact) => (
-                  <tr key={contact.id} className="hover:bg-slate-800/30 transition">
-                    <td className="py-3 px-4">
+                  <tr key={contact.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition">
+                    <td className="py-3.5 px-4">
                       <button
                         onClick={() => toggleSelectOne(contact.id)}
-                        className="text-slate-400 hover:text-white"
+                        className="text-slate-400 hover:text-slate-700 dark:hover:text-white"
                       >
                         {selectedContacts.includes(contact.id) ? (
-                          <CheckSquare className="w-4 h-4 text-emerald-400" />
+                          <CheckSquare className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
                         ) : (
                           <Square className="w-4 h-4" />
                         )}
                       </button>
                     </td>
-                    <td className="py-3 px-4">
-                      <div className="font-semibold text-white">
+                    <td className="py-3.5 px-4">
+                      <div className="font-bold text-slate-900 dark:text-white">
                         {contact.firstName || contact.lastName
                           ? `${contact.firstName || ''} ${contact.lastName || ''}`.trim()
                           : 'Unnamed'}
                       </div>
-                      <div className="font-mono text-emerald-400 text-[11px] flex items-center gap-1.5">
+                      <div className="font-mono text-emerald-700 dark:text-emerald-400 text-[11px] flex items-center gap-1.5 font-semibold">
                         {contact.phone}
                         {contact.countryCode && (
-                          <span className="text-[9px] uppercase px-1 py-0.2 rounded bg-slate-800 text-slate-400">
+                          <span className="text-[9px] uppercase px-1.5 py-0.2 rounded bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-sans border border-slate-200 dark:border-slate-700">
                             {contact.countryCode}
                           </span>
                         )}
                       </div>
                     </td>
-                    <td className="py-3 px-4">
-                      <div className="text-slate-200">{contact.companyName || '—'}</div>
-                      <div className="text-slate-400 text-[11px]">{contact.email || '—'}</div>
+                    <td className="py-3.5 px-4">
+                      <div className="text-slate-800 dark:text-slate-200 font-medium">{contact.companyName || '—'}</div>
+                      <div className="text-slate-500 dark:text-slate-400 text-[11px]">{contact.email || '—'}</div>
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="py-3.5 px-4">
                       <div className="flex flex-wrap gap-1">
                         {contact.tags?.length > 0 ? (
                           contact.tags.map((t) => (
                             <span
                               key={t.tag.id}
-                              className="px-1.5 py-0.5 rounded text-[10px] bg-slate-800 text-slate-300 border border-slate-700"
+                              className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700"
                             >
                               {t.tag.name}
                             </span>
                           ))
                         ) : (
-                          <span className="text-slate-600">—</span>
+                          <span className="text-slate-400">—</span>
                         )}
                       </div>
                     </td>
-                    <td className="py-3 px-4">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-semibold uppercase bg-slate-800 text-slate-300">
+                    <td className="py-3.5 px-4">
+                      <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
                         {contact.leadStatus}
                       </span>
                     </td>
-                    <td className="py-3 px-4">
+                    <td className="py-3.5 px-4">
                       <span
-                        className={`px-2 py-0.5 rounded text-[10px] font-semibold uppercase ${
+                        className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold uppercase ${
                           contact.optInStatus === 'OPTED_IN'
-                            ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20'
-                            : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
+                            ? 'bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20'
+                            : 'bg-rose-50 dark:bg-rose-500/10 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-500/20'
                         }`}
                       >
                         {contact.optInStatus}
                       </span>
                     </td>
-                    <td className="py-3 px-4 text-slate-500 text-[11px]">
+                    <td className="py-3.5 px-4 text-slate-500 dark:text-slate-400 text-[11px]">
                       {new Date(contact.createdAt).toLocaleDateString()}
                     </td>
                   </tr>
@@ -416,24 +416,24 @@ export const ContactsPage: React.FC = () => {
 
         {/* Pagination Bar */}
         {contactsData && contactsData.meta.totalPages > 1 && (
-          <div className="p-4 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
+          <div className="p-4 border-t border-slate-200 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-950/40 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
             <div>
-              Showing page <span className="font-semibold text-slate-200">{contactsData.meta.page}</span> of{' '}
-              <span className="font-semibold text-slate-200">{contactsData.meta.totalPages}</span> (
+              Showing page <span className="font-semibold text-slate-800 dark:text-slate-200">{contactsData.meta.page}</span> of{' '}
+              <span className="font-semibold text-slate-800 dark:text-slate-200">{contactsData.meta.totalPages}</span> (
               {contactsData.meta.total} total contacts)
             </div>
             <div className="flex items-center gap-2">
               <button
                 disabled={page <= 1}
                 onClick={() => setPage((p) => Math.max(p - 1, 1))}
-                className="p-1.5 rounded-lg bg-slate-800 text-slate-200 hover:bg-slate-700 disabled:opacity-40 transition"
+                className="p-1.5 rounded-lg bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 transition border border-slate-200 dark:border-slate-700"
               >
                 <ChevronLeft className="w-4 h-4" />
               </button>
               <button
                 disabled={page >= contactsData.meta.totalPages}
                 onClick={() => setPage((p) => p + 1)}
-                className="p-1.5 rounded-lg bg-slate-800 text-slate-200 hover:bg-slate-700 disabled:opacity-40 transition"
+                className="p-1.5 rounded-lg bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700 disabled:opacity-40 transition border border-slate-200 dark:border-slate-700"
               >
                 <ChevronRight className="w-4 h-4" />
               </button>
@@ -443,18 +443,18 @@ export const ContactsPage: React.FC = () => {
       </div>
 
       {/* CSV Import History Section */}
-      <div className="bg-slate-900/60 border border-slate-800/80 rounded-2xl p-6 shadow-xl">
-        <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-4 flex items-center gap-2">
-          <FileSpreadsheet className="w-4 h-4 text-emerald-400" />
+      <div className="bg-white dark:bg-slate-900/60 border border-slate-200 dark:border-slate-800/80 rounded-2xl p-6 shadow-xs">
+        <h3 className="text-sm font-bold text-slate-900 dark:text-white uppercase tracking-wider mb-4 flex items-center gap-2">
+          <FileSpreadsheet className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
           Recent Async Import Jobs ({importHistory.length})
         </h3>
 
         {importHistory.length === 0 ? (
-          <p className="text-xs text-slate-500">No background imports recorded yet.</p>
+          <p className="text-xs text-slate-400">No background imports recorded yet.</p>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs text-slate-300">
-              <thead className="bg-slate-950/80 text-[10px] uppercase tracking-wider text-slate-400 border-b border-slate-800">
+            <table className="w-full text-left text-xs text-slate-700 dark:text-slate-300">
+              <thead className="bg-slate-50 dark:bg-slate-950/80 text-[10px] uppercase tracking-wider text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800 font-bold">
                 <tr>
                   <th className="py-2.5 px-3">File Name</th>
                   <th className="py-2.5 px-3">Status</th>
@@ -465,25 +465,25 @@ export const ContactsPage: React.FC = () => {
                   <th className="py-2.5 px-3 text-right">Actions</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-800/40">
+              <tbody className="divide-y divide-slate-200/70 dark:divide-slate-800/40">
                 {importHistory.map((job) => (
-                  <tr key={job.id} className="hover:bg-slate-800/20">
-                    <td className="py-2.5 px-3 font-medium text-slate-200">{job.fileName}</td>
+                  <tr key={job.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/20">
+                    <td className="py-2.5 px-3 font-semibold text-slate-800 dark:text-slate-200">{job.fileName}</td>
                     <td className="py-2.5 px-3">
-                      <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold uppercase bg-emerald-50 dark:bg-emerald-500/10 text-emerald-700 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-500/20">
                         {job.status}
                       </span>
                     </td>
                     <td className="py-2.5 px-3">{job.processedRows} / {job.totalRows}</td>
-                    <td className="py-2.5 px-3 text-emerald-400 font-semibold">{job.successRows}</td>
-                    <td className="py-2.5 px-3 text-rose-400 font-semibold">{job.failedRows}</td>
+                    <td className="py-2.5 px-3 text-emerald-600 dark:text-emerald-400 font-bold">{job.successRows}</td>
+                    <td className="py-2.5 px-3 text-rose-600 dark:text-rose-400 font-bold">{job.failedRows}</td>
                     <td className="py-2.5 px-3 text-slate-500">{new Date(job.createdAt).toLocaleString()}</td>
                     <td className="py-2.5 px-3 text-right">
                       {job.failedRows > 0 && (
                         <a
                           href={`/api/v1/contacts/imports/${job.id}/error-report`}
                           download
-                          className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold rounded bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30"
+                          className="inline-flex items-center gap-1 px-2.5 py-1 text-[11px] font-semibold rounded bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-500/30"
                         >
                           <Download className="w-3 h-3" />
                           Error Report
@@ -500,14 +500,14 @@ export const ContactsPage: React.FC = () => {
 
       {/* Add Single Contact Modal */}
       {isAddModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-          <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-6 space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-md bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-6 space-y-4">
             <div>
-              <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                <Plus className="w-5 h-5 text-emerald-400" />
+              <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                <Plus className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                 Add New Contact
               </h3>
-              <p className="text-xs text-slate-400 mt-1">
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
                 International numbers are validated and stored in E.164 format.
               </p>
             </div>
@@ -527,7 +527,7 @@ export const ContactsPage: React.FC = () => {
               className="space-y-3"
             >
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
                   Phone Number (E.164 or Local) *
                 </label>
                 <div className="flex gap-2">
@@ -536,7 +536,7 @@ export const ContactsPage: React.FC = () => {
                     placeholder="IN"
                     value={newCountryCode}
                     onChange={(e) => setNewCountryCode(e.target.value.toUpperCase())}
-                    className="w-16 bg-slate-950 border border-slate-800 rounded-lg px-2.5 py-2 text-xs font-bold text-slate-200 text-center uppercase"
+                    className="w-16 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-2.5 py-2 text-xs font-bold text-slate-800 dark:text-slate-200 text-center uppercase"
                   />
                   <input
                     type="text"
@@ -544,49 +544,49 @@ export const ContactsPage: React.FC = () => {
                     placeholder="+91 98765 43210 or 9876543210"
                     value={newPhone}
                     onChange={(e) => setNewPhone(e.target.value)}
-                    className="flex-1 bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-100 font-mono focus:outline-none focus:border-emerald-500"
+                    className="flex-1 bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 font-mono focus:outline-none focus:border-emerald-500"
                   />
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">First Name</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">First Name</label>
                   <input
                     type="text"
                     value={newFirstName}
                     onChange={(e) => setNewFirstName(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-500"
                   />
                 </div>
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">Last Name</label>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Last Name</label>
                   <input
                     type="text"
                     value={newLastName}
                     onChange={(e) => setNewLastName(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-emerald-500"
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-500"
                   />
                 </div>
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Company</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Company</label>
                 <input
                   type="text"
                   value={newCompany}
                   onChange={(e) => setNewCompany(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-500"
                 />
               </div>
 
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-1">Email</label>
+                <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">Email</label>
                 <input
                   type="email"
                   value={newEmail}
                   onChange={(e) => setNewEmail(e.target.value)}
-                  className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-100 focus:outline-none focus:border-emerald-500"
+                  className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-500"
                 />
               </div>
 
@@ -594,14 +594,14 @@ export const ContactsPage: React.FC = () => {
                 <button
                   type="button"
                   onClick={() => setIsAddModalOpen(false)}
-                  className="px-4 py-2 text-xs font-medium rounded-lg bg-slate-800 text-slate-300 hover:bg-slate-700 transition"
+                  className="px-4 py-2 text-xs font-medium rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 transition"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
                   disabled={createContactMutation.isPending}
-                  className="px-5 py-2 text-xs font-bold rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 transition shadow-lg shadow-emerald-500/20"
+                  className="px-5 py-2 text-xs font-bold rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white transition shadow-sm"
                 >
                   {createContactMutation.isPending ? 'Saving...' : 'Save Contact'}
                 </button>
@@ -613,15 +613,15 @@ export const ContactsPage: React.FC = () => {
 
       {/* Multi-step CSV Import Wizard Modal */}
       {isImportModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-fade-in">
-          <div className="w-full max-w-2xl bg-slate-900 border border-slate-800 rounded-2xl shadow-2xl p-6 space-y-5">
-            <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm animate-fade-in">
+          <div className="w-full max-w-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl shadow-2xl p-6 space-y-5">
+            <div className="flex items-center justify-between border-b border-slate-200 dark:border-slate-800 pb-3">
               <div>
-                <h3 className="text-lg font-bold text-white flex items-center gap-2">
-                  <Upload className="w-5 h-5 text-emerald-400" />
+                <h3 className="text-lg font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                  <Upload className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                   Async CSV Contact Import Wizard
                 </h3>
-                <p className="text-xs text-slate-400">Step {importStep} of 3</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Step {importStep} of 3</p>
               </div>
               <button
                 onClick={() => {
@@ -629,7 +629,7 @@ export const ContactsPage: React.FC = () => {
                   setImportStep(1);
                   setCsvFile(null);
                 }}
-                className="text-slate-400 hover:text-white"
+                className="text-slate-400 hover:text-slate-700 dark:hover:text-white p-1"
               >
                 ✕
               </button>
@@ -638,13 +638,13 @@ export const ContactsPage: React.FC = () => {
             {/* Step 1: File Upload */}
             {importStep === 1 && (
               <div className="space-y-4">
-                <div className="border-2 border-dashed border-slate-800 hover:border-emerald-500/50 rounded-2xl p-8 text-center transition bg-slate-950/40">
-                  <FileSpreadsheet className="w-12 h-12 text-emerald-400 mx-auto mb-3" />
-                  <h4 className="text-sm font-bold text-white mb-1">Upload Contacts CSV</h4>
-                  <p className="text-xs text-slate-400 mb-4 max-w-sm mx-auto">
+                <div className="border-2 border-dashed border-slate-200 dark:border-slate-800 hover:border-emerald-500/50 rounded-2xl p-8 text-center transition bg-slate-50/50 dark:bg-slate-950/40">
+                  <FileSpreadsheet className="w-12 h-12 text-emerald-600 dark:text-emerald-400 mx-auto mb-3" />
+                  <h4 className="text-sm font-bold text-slate-900 dark:text-white mb-1">Upload Contacts CSV</h4>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-4 max-w-sm mx-auto">
                     Supports large CSV files. Formulas are sanitized to prevent CSV Injection (OWASP DDE).
                   </p>
-                  <label className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 cursor-pointer shadow-lg shadow-emerald-500/20">
+                  <label className="inline-flex items-center gap-2 px-4 py-2 text-xs font-bold rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white cursor-pointer shadow-sm transition">
                     <Upload className="w-4 h-4" />
                     Browse File
                     <input
@@ -661,20 +661,20 @@ export const ContactsPage: React.FC = () => {
             {/* Step 2: Column Mapping */}
             {importStep === 2 && csvPreview && (
               <div className="space-y-4">
-                <div className="p-3 rounded-lg bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-400">
-                  Loaded {csvPreview.totalRows} rows from <span className="font-semibold">{csvFile?.name}</span>.
+                <div className="p-3.5 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 border border-emerald-200 dark:border-emerald-500/20 text-xs text-emerald-800 dark:text-emerald-400">
+                  Loaded {csvPreview.totalRows} rows from <span className="font-bold">{csvFile?.name}</span>.
                   Map your CSV column headers to DOOT contact fields below.
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                       Phone Number Column *
                     </label>
                     <select
                       value={phoneColumn}
                       onChange={(e) => setPhoneColumn(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-100"
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100"
                     >
                       <option value="">Select column...</option>
                       {csvPreview.headers.map((h) => (
@@ -686,13 +686,13 @@ export const ContactsPage: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                       Contact Name Column
                     </label>
                     <select
                       value={nameColumn}
                       onChange={(e) => setNameColumn(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-100"
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100"
                     >
                       <option value="">(Optional) Select column...</option>
                       {csvPreview.headers.map((h) => (
@@ -704,13 +704,13 @@ export const ContactsPage: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                       Email Column
                     </label>
                     <select
                       value={emailColumn}
                       onChange={(e) => setEmailColumn(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-100"
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100"
                     >
                       <option value="">(Optional) Select column...</option>
                       {csvPreview.headers.map((h) => (
@@ -722,13 +722,13 @@ export const ContactsPage: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-slate-300 mb-1">
+                    <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                       Company Column
                     </label>
                     <select
                       value={companyColumn}
                       onChange={(e) => setCompanyColumn(e.target.value)}
-                      className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-100"
+                      className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100"
                     >
                       <option value="">(Optional) Select column...</option>
                       {csvPreview.headers.map((h) => (
@@ -740,17 +740,17 @@ export const ContactsPage: React.FC = () => {
                   </div>
                 </div>
 
-                <div className="flex justify-between pt-4 border-t border-slate-800">
+                <div className="flex justify-between pt-4 border-t border-slate-200 dark:border-slate-800">
                   <button
                     onClick={() => setImportStep(1)}
-                    className="px-4 py-2 text-xs font-medium rounded-lg bg-slate-800 text-slate-300"
+                    className="px-4 py-2 text-xs font-semibold rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
                   >
                     Back
                   </button>
                   <button
                     disabled={!phoneColumn}
                     onClick={() => setImportStep(3)}
-                    className="px-5 py-2 text-xs font-bold rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 disabled:opacity-50"
+                    className="px-5 py-2 text-xs font-bold rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white disabled:opacity-50 transition shadow-sm"
                   >
                     Next: Strategy & Tags
                   </button>
@@ -762,7 +762,7 @@ export const ContactsPage: React.FC = () => {
             {importStep === 3 && (
               <div className="space-y-4">
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-2">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-2">
                     Duplicate Phone Number Strategy
                   </label>
                   <div className="grid grid-cols-3 gap-3">
@@ -776,40 +776,40 @@ export const ContactsPage: React.FC = () => {
                         onClick={() => setDuplicatePolicy(opt.id as any)}
                         className={`p-3 rounded-xl border cursor-pointer transition ${
                           duplicatePolicy === opt.id
-                            ? 'bg-emerald-500/10 border-emerald-500/50 text-white'
-                            : 'bg-slate-950 border-slate-800 text-slate-400 hover:border-slate-700'
+                            ? 'bg-emerald-50 dark:bg-emerald-500/10 border-emerald-500 text-emerald-800 dark:text-white font-semibold'
+                            : 'bg-slate-50 dark:bg-slate-950 border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-400 hover:border-slate-300'
                         }`}
                       >
                         <div className="font-bold text-xs">{opt.title}</div>
-                        <div className="text-[10px] mt-1 text-slate-500">{opt.desc}</div>
+                        <div className="text-[10px] mt-1 text-slate-500 dark:text-slate-500">{opt.desc}</div>
                       </div>
                     ))}
                   </div>
                 </div>
 
                 <div>
-                  <label className="block text-xs font-semibold text-slate-300 mb-1">
+                  <label className="block text-xs font-bold text-slate-700 dark:text-slate-300 mb-1">
                     Assign Tag to Imported Contacts
                   </label>
                   <input
                     type="text"
                     value={importTag}
                     onChange={(e) => setImportTag(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-100"
+                    className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100"
                   />
                 </div>
 
-                <div className="flex justify-between pt-4 border-t border-slate-800">
+                <div className="flex justify-between pt-4 border-t border-slate-200 dark:border-slate-800">
                   <button
                     onClick={() => setImportStep(2)}
-                    className="px-4 py-2 text-xs font-medium rounded-lg bg-slate-800 text-slate-300"
+                    className="px-4 py-2 text-xs font-semibold rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700"
                   >
                     Back
                   </button>
                   <button
                     onClick={() => startImportMutation.mutate()}
                     disabled={startImportMutation.isPending}
-                    className="px-5 py-2 text-xs font-bold rounded-lg bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-lg shadow-emerald-500/20"
+                    className="px-5 py-2 text-xs font-bold rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm transition"
                   >
                     {startImportMutation.isPending ? 'Starting...' : 'Launch Background Import'}
                   </button>

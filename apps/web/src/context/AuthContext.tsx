@@ -22,7 +22,7 @@ interface AuthContextType {
   organizations: OrganizationSummary[];
   activeOrg: OrganizationSummary | null;
   isLoading: boolean;
-  switchOrganization: (orgId: string) => void;
+  switchOrganization: (orgId: string, orgData?: Partial<OrganizationSummary>) => void;
   setUserSession: (user: User, orgs: OrganizationSummary[], activeOrgId?: string) => void;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
@@ -36,12 +36,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [activeOrg, setActiveOrg] = useState<OrganizationSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const switchOrganization = (orgId: string) => {
-    const target = organizations.find((o) => o.id === orgId);
+  const switchOrganization = (orgId: string, orgData?: Partial<OrganizationSummary>) => {
+    let target = organizations.find((o) => o.id === orgId);
+    if (!target && orgData) {
+      target = {
+        id: orgId,
+        name: orgData.name || 'Workspace',
+        slug: orgData.slug || orgId,
+        role: orgData.role || 'OWNER',
+        planTier: orgData.planTier,
+      };
+      setOrganizations((prev) => [...prev.filter((o) => o.id !== orgId), target!]);
+    }
     if (target) {
       setActiveOrg(target);
-      api.setActiveTenantId(target.id);
+    } else {
+      setActiveOrg({
+        id: orgId,
+        name: orgData?.name || 'Workspace',
+        slug: orgData?.slug || orgId,
+        role: orgData?.role || 'OWNER',
+      });
     }
+    api.setActiveTenantId(orgId);
   };
 
   const setUserSession = (

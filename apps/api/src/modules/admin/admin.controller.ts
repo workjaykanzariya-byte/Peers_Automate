@@ -4,6 +4,7 @@ import {
   Post,
   Patch,
   Put,
+  Delete,
   Param,
   Body,
   Query,
@@ -49,6 +50,82 @@ export class AdminController {
     );
   }
 
+  @Post('organizations')
+  @ApiOperation({ summary: 'Platform Owner: Create new customer organization workspace with initial owner user and credentials' })
+  async createOrganization(
+    @Body() dto: any,
+    @CurrentUser() user: IAuthUser,
+  ) {
+    return this.adminService.createOrganization(dto, user.id);
+  }
+
+  @Patch('organizations/:orgId')
+  @Put('organizations/:orgId')
+  @ApiOperation({ summary: 'Platform Owner: Update customer organization details, settings, and relay webhooks' })
+  async updateOrganization(
+    @Param('orgId') orgId: string,
+    @Body() dto: any,
+    @CurrentUser() user: IAuthUser,
+  ) {
+    return this.adminService.updateOrganization(orgId, dto, user.id);
+  }
+
+  @Delete('organizations/:orgId')
+  @ApiOperation({ summary: 'Platform Owner: Delete customer organization workspace and its assets' })
+  async deleteOrganization(
+    @Param('orgId') orgId: string,
+    @CurrentUser() user: IAuthUser,
+  ) {
+    return this.adminService.deleteOrganization(orgId, user.id);
+  }
+
+  @Post('clean-demo-access')
+  @ApiOperation({ summary: 'Platform Owner: Purge all demo/seed non-owner logins, leaving strictly owner access' })
+  async cleanDemoAccess(@CurrentUser() user: IAuthUser) {
+    return this.adminService.cleanDemoAccounts(user.id);
+  }
+
+  @Post('organizations/:orgId/webhooks')
+  @ApiOperation({ summary: 'Platform Owner: Register dynamic external outbound webhook relay for organization' })
+  async createOrgWebhook(
+    @Param('orgId') orgId: string,
+    @Body() dto: any,
+    @CurrentUser() user: IAuthUser,
+  ) {
+    return this.adminService.createOrgWebhook(orgId, dto, user.id);
+  }
+
+  @Patch('organizations/:orgId/webhooks/:webhookId')
+  @Put('organizations/:orgId/webhooks/:webhookId')
+  @ApiOperation({ summary: 'Platform Owner: Update dynamic external outbound webhook relay' })
+  async updateOrgWebhook(
+    @Param('orgId') orgId: string,
+    @Param('webhookId') webhookId: string,
+    @Body() dto: any,
+    @CurrentUser() user: IAuthUser,
+  ) {
+    return this.adminService.updateOrgWebhook(orgId, webhookId, dto, user.id);
+  }
+
+  @Delete('organizations/:orgId/webhooks/:webhookId')
+  @ApiOperation({ summary: 'Platform Owner: Remove dynamic external outbound webhook relay' })
+  async deleteOrgWebhook(
+    @Param('orgId') orgId: string,
+    @Param('webhookId') webhookId: string,
+    @CurrentUser() user: IAuthUser,
+  ) {
+    return this.adminService.deleteOrgWebhook(orgId, webhookId, user.id);
+  }
+
+  @Post('organizations/:orgId/webhooks/:webhookId/test')
+  @ApiOperation({ summary: 'Platform Owner: Trigger test event payload to external webhook relay' })
+  async testOrgWebhook(
+    @Param('orgId') orgId: string,
+    @Param('webhookId') webhookId: string,
+  ) {
+    return this.adminService.testOrgWebhook(orgId, webhookId);
+  }
+
   @Patch('organizations/:id/status')
   @ApiOperation({ summary: 'Suspend or reactivate customer organization workspace' })
   async updateOrgStatus(
@@ -92,6 +169,17 @@ export class AdminController {
       body.reason,
       user.id,
     );
+  }
+
+  @Patch('organizations/:orgId/phone-numbers/:phoneId')
+  @ApiOperation({ summary: 'Platform admin update customer organization WhatsApp integration asset and credentials' })
+  async updateOrgIntegration(
+    @Param('orgId') orgId: string,
+    @Param('phoneId') phoneId: string,
+    @Body() dto: any,
+    @CurrentUser() user: IAuthUser,
+  ) {
+    return this.adminService.updateOrganizationIntegration(orgId, phoneId, dto, user.id);
   }
 
   @Get('users')

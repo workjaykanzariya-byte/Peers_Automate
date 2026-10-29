@@ -2,6 +2,8 @@ import {
   Controller,
   Get,
   Post,
+  Put,
+  Patch,
   Delete,
   Param,
   Body,
@@ -23,12 +25,14 @@ import { IAuthUser, ITenantContext } from '@doot/shared';
 export class WebhooksController {
   constructor(private readonly webhooksService: WebhooksService) {}
 
+  @Get()
   @Get('endpoints')
   @ApiOperation({ summary: 'List tenant outbound webhook endpoints' })
   async listEndpoints(@CurrentTenant() tenant: ITenantContext) {
     return this.webhooksService.listEndpoints(tenant.organizationId);
   }
 
+  @Post()
   @Post('endpoints')
   @ApiOperation({ summary: 'Register new outbound webhook destination with SSRF validation' })
   async createEndpoint(
@@ -37,6 +41,18 @@ export class WebhooksController {
     @Body() dto: CreateWebhookEndpointDto,
   ) {
     return this.webhooksService.createEndpoint(tenant.organizationId, user.id, dto);
+  }
+
+  @Patch('endpoints/:id')
+  @Put('endpoints/:id')
+  @ApiOperation({ summary: 'Update existing outbound webhook endpoint' })
+  async updateEndpoint(
+    @CurrentTenant() tenant: ITenantContext,
+    @CurrentUser() user: IAuthUser,
+    @Param('id') id: string,
+    @Body() dto: any,
+  ) {
+    return this.webhooksService.updateEndpoint(tenant.organizationId, id, dto, user.id);
   }
 
   @Delete('endpoints/:id')
@@ -68,6 +84,21 @@ export class WebhooksController {
     const p = page ? parseInt(page, 10) : 1;
     const l = limit ? parseInt(limit, 10) : 25;
     return this.webhooksService.listDeliveryLogs(tenant.organizationId, p, l);
+  }
+
+  @Get('message-logs')
+  @ApiOperation({ summary: 'Paginated delivery logs for incoming and outgoing WhatsApp messages' })
+  async listMessageLogs(
+    @CurrentTenant() tenant: ITenantContext,
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('status') status?: string,
+    @Query('search') search?: string,
+    @Query('direction') direction?: string,
+  ) {
+    const p = page ? parseInt(page, 10) : 1;
+    const l = limit ? parseInt(limit, 10) : 50;
+    return this.webhooksService.listMessageLogs(tenant.organizationId, p, l, status, search, direction);
   }
 
   @Post('logs/:id/retry')

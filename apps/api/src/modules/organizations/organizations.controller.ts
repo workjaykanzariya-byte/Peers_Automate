@@ -2,6 +2,8 @@ import {
   Controller,
   Get,
   Post,
+  Patch,
+  Put,
   Body,
   UseGuards,
 } from '@nestjs/common';
@@ -41,6 +43,18 @@ export class OrganizationsController {
   @ApiOperation({ summary: 'Get details of the currently selected organization workspace' })
   async getCurrentOrganization(@CurrentTenant() tenant: ITenantContext) {
     return this.orgsService.getOrganization(tenant.organizationId);
+  }
+
+  @Patch('current')
+  @Put('current')
+  @UseGuards(TenantContextGuard)
+  @ApiOperation({ summary: 'Update currently selected organization workspace preferences' })
+  async updateCurrentOrganization(
+    @CurrentTenant() tenant: ITenantContext,
+    @CurrentUser() user: IAuthUser,
+    @Body() dto: any,
+  ) {
+    return this.orgsService.updateCurrentOrganization(tenant.organizationId, dto, user.id);
   }
 
   @Get('current/members')

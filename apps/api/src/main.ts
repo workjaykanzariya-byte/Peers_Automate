@@ -4,15 +4,17 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
-import * as cookieParser from 'cookie-parser';
-
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule);
 
   // Global Middlewares
-  const cookieMiddleware = (cookieParser as any).default || cookieParser;
-  app.use(cookieMiddleware());
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
+  const cookieParser = require('cookie-parser');
+  const cookieMiddleware = typeof cookieParser === 'function' ? cookieParser : cookieParser.default;
+  if (typeof cookieMiddleware === 'function') {
+    app.use(cookieMiddleware());
+  }
 
   // CORS Configuration
   const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
@@ -52,7 +54,7 @@ async function bootstrap() {
   SwaggerModule.setup('docs', app, document);
 
   const port = process.env.PORT || 3000;
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
   logger.log(`🚀 DOOT Backend API successfully started on http://localhost:${port}/${apiPrefix}`);
   logger.log(`📘 OpenAPI Swagger Documentation available at http://localhost:${port}/docs`);
 }

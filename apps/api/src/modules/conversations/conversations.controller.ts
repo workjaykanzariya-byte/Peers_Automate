@@ -47,6 +47,16 @@ export class ConversationsController {
     return this.conversationsService.getConversation(tenant.organizationId, id);
   }
 
+  @Get(':id/messages')
+  @ApiOperation({ summary: 'Get conversation message stream directly' })
+  async getConversationMessages(
+    @CurrentTenant() tenant: ITenantContext,
+    @Param('id') id: string,
+  ) {
+    const conv = await this.conversationsService.getConversation(tenant.organizationId, id);
+    return conv.messages;
+  }
+
   @Post(':id/messages')
   @ApiOperation({ summary: 'Send message (freeform within 24h window; template if outside window)' })
   async sendMessage(
@@ -56,6 +66,17 @@ export class ConversationsController {
     @Body() dto: SendMessageDto,
   ) {
     return this.conversationsService.sendMessage(tenant.organizationId, user.id, id, dto);
+  }
+
+  @Post(':id/keep-alive')
+  @ApiOperation({ summary: 'Send 24-hour window keep-alive / stay-connected message to prevent window expiration' })
+  async sendKeepAlive(
+    @CurrentTenant() tenant: ITenantContext,
+    @CurrentUser() user: IAuthUser,
+    @Param('id') id: string,
+    @Body('customMessage') customMessage?: string,
+  ) {
+    return this.conversationsService.sendKeepAlive(tenant.organizationId, user.id, id, customMessage);
   }
 
   @Patch(':id')

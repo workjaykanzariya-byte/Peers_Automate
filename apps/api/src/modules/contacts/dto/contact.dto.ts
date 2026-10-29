@@ -62,6 +62,10 @@ export class CreateContactDto {
   @IsArray()
   @IsOptional()
   groupIds?: string[];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  customFields?: Record<string, any>;
 }
 
 export class UpdateContactDto extends CreateContactDto {

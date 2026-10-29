@@ -147,14 +147,34 @@ export class AuthService {
       },
     });
 
-    const activeOrgs = user.memberships
+    let activeOrgs = user.memberships
       .filter((m) => m.organization.status === 'ACTIVE')
       .map((m) => ({
         id: m.organization.id,
         name: m.organization.name,
         slug: m.organization.slug,
         role: m.role,
+        planTier: m.organization.planTier,
       }));
+
+    if (user.isPlatformAdmin) {
+      const allActiveOrgs = await this.prisma.organization.findMany({
+        where: { status: 'ACTIVE' },
+        orderBy: { createdAt: 'desc' },
+      });
+      const existingIds = new Set(activeOrgs.map((o) => o.id));
+      for (const org of allActiveOrgs) {
+        if (!existingIds.has(org.id)) {
+          activeOrgs.push({
+            id: org.id,
+            name: org.name,
+            slug: org.slug,
+            role: 'OWNER' as any,
+            planTier: org.planTier,
+          });
+        }
+      }
+    }
 
     return {
       user: {
@@ -186,6 +206,33 @@ export class AuthService {
       throw new UnauthorizedException('User not found');
     }
 
+    let orgList = user.memberships.map((m) => ({
+      id: m.organization.id,
+      name: m.organization.name,
+      slug: m.organization.slug,
+      role: m.role,
+      planTier: m.organization.planTier,
+    }));
+
+    if (user.isPlatformAdmin) {
+      const allActiveOrgs = await this.prisma.organization.findMany({
+        where: { status: 'ACTIVE' },
+        orderBy: { createdAt: 'desc' },
+      });
+      const existingIds = new Set(orgList.map((o) => o.id));
+      for (const org of allActiveOrgs) {
+        if (!existingIds.has(org.id)) {
+          orgList.push({
+            id: org.id,
+            name: org.name,
+            slug: org.slug,
+            role: 'OWNER' as any,
+            planTier: org.planTier,
+          });
+        }
+      }
+    }
+
     return {
       id: user.id,
       email: user.email,
@@ -194,13 +241,7 @@ export class AuthService {
       phone: user.phone,
       avatarUrl: user.avatarUrl,
       isPlatformAdmin: user.isPlatformAdmin,
-      organizations: user.memberships.map((m) => ({
-        id: m.organization.id,
-        name: m.organization.name,
-        slug: m.organization.slug,
-        role: m.role,
-        planTier: m.organization.planTier,
-      })),
+      organizations: orgList,
     };
   }
 

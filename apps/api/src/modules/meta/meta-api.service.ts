@@ -1,4 +1,4 @@
-import { Injectable, Logger, HttpException, HttpStatus } from '@nestjs/common';
+import { Injectable, Logger, HttpException, HttpStatus, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 export interface MetaApiErrorResponse {
@@ -47,16 +47,29 @@ export class MetaApiService {
       const responseBody = await response.json();
 
       if (!response.ok) {
-        const metaError = responseBody as MetaApiErrorResponse;
-        const errorMessage = metaError?.error?.message || `Meta API request failed with status ${response.status}`;
+        const metaError = responseBody as any;
+        const errorUserTitle = metaError?.error?.error_user_title;
+        const errorUserMsg = metaError?.error?.error_user_msg;
+        const rawMessage = metaError?.error?.message;
         const errorCode = metaError?.error?.code || response.status;
+        const errorSubcode = metaError?.error?.error_subcode;
+
+        let errorMessage =
+          [errorUserTitle, errorUserMsg, rawMessage].filter(Boolean).join(': ') ||
+          `Meta API request failed with status ${response.status}`;
+
+        if (errorCode === 190 || errorSubcode === 463) {
+          errorMessage =
+            'Your Meta Access Token has expired (Session expired). Please generate a fresh token from your Meta Developer Portal (WhatsApp -> API Setup -> Generate access token) and paste it into WhatsApp Connection.';
+        }
+
         this.logger.error(`Meta API Error [${errorCode}]: ${errorMessage} (trace: ${metaError?.error?.fbtrace_id})`);
         throw new HttpException(
           {
             statusCode: response.status,
             message: `Meta API Error: ${errorMessage}`,
             errorCode,
-            errorSubcode: metaError?.error?.error_subcode,
+            errorSubcode,
             providerTraceId: metaError?.error?.fbtrace_id,
           },
           response.status >= 500 ? HttpStatus.BAD_GATEWAY : HttpStatus.BAD_REQUEST,
@@ -171,6 +184,133 @@ export class MetaApiService {
   }
 
   /**
+   * Uploads sample media to Meta Resumable Upload API to obtain a valid header_handle.
+   * Required by Meta Cloud API when creating templates with IMAGE, VIDEO, or DOCUMENT headers.
+   */
+  async uploadTemplateSampleMedia(
+    accessToken: string,
+    fileBuffer: Buffer,
+    mimeType: string = 'image/png',
+  ): Promise<string> {
+    if (accessToken.includes('mock')) {
+      return `4::mock_handle_${Date.now()}`;
+    }
+
+    try {
+      // 1. Resolve Meta App ID dynamically from access token
+      let appId = this.configService.get<string>('META_APP_ID');
+      try {
+        const debugRes = await fetch(
+          `${this.baseUrl}/debug_token?input_token=${accessToken}&access_token=${accessToken}`,
+        );
+        const debugData: any = await debugRes.json();
+        if (debugData?.data?.app_id) {
+          appId = debugData.data.app_id;
+        }
+      } catch (err: any) {
+        this.logger.warn(`Could not query debug_token: ${err.message}`);
+      }
+
+      if (!appId) {
+        throw new Error('Meta App ID is required to initiate media upload session');
+      }
+
+      // 2. Initiate Resumable Upload Session
+      const sessionUrl = `${this.baseUrl}/${appId}/uploads?file_length=${fileBuffer.length}&file_type=${encodeURIComponent(
+        mimeType,
+      )}&access_token=${accessToken}`;
+      const sessionRes = await fetch(sessionUrl, { method: 'POST' });
+      const sessionData: any = await sessionRes.json();
+
+      if (!sessionData?.id) {
+        if (sessionData?.error?.code === 190 || sessionData?.error?.error_subcode === 463) {
+          throw new BadRequestException(
+            'Your Meta Access Token has expired. Please click "Generate access token" in Meta Developers (WhatsApp -> API Setup) and paste it into WhatsApp Connection -> Permanent Access Token.',
+          );
+        }
+        const errorMsg = sessionData?.error?.error_user_msg || sessionData?.error?.message || JSON.stringify(sessionData);
+        throw new Error(`Failed to create Meta upload session: ${errorMsg}`);
+      }
+
+      // 3. Upload raw file bytes to session endpoint
+      const uploadUrl = `${this.baseUrl}/${sessionData.id}`;
+      const uploadRes = await fetch(uploadUrl, {
+        method: 'POST',
+        headers: {
+          Authorization: `OAuth ${accessToken}`,
+          file_offset: '0',
+          'Content-Type': mimeType,
+        },
+        body: fileBuffer as any,
+      });
+
+      const uploadData: any = await uploadRes.json();
+      if (!uploadData?.h) {
+        if (uploadData?.error?.code === 190 || uploadData?.error?.error_subcode === 463) {
+          throw new BadRequestException(
+            'Your Meta Access Token has expired. Please click "Generate access token" in Meta Developers (WhatsApp -> API Setup) and paste it into WhatsApp Connection -> Permanent Access Token.',
+          );
+        }
+        const errorMsg = uploadData?.error?.error_user_msg || uploadData?.error?.message || JSON.stringify(uploadData);
+        throw new Error(`Meta upload completed without handle: ${errorMsg}`);
+      }
+
+      this.logger.log(`Successfully obtained Meta header_handle: ${uploadData.h.slice(0, 24)}...`);
+      return uploadData.h;
+    } catch (err: any) {
+      this.logger.error(`Failed to upload template sample media to Meta: ${err.message}`);
+      throw new BadRequestException(`Meta Sample Media Upload Error: ${err.message}`);
+    }
+  }
+
+  /**
+   * Uploads media file directly to Meta WhatsApp Cloud API to obtain a media ID.
+   * Endpoint: POST /{phone_number_id}/media
+   */
+  async uploadMedia(
+    phoneNumberId: string,
+    accessToken: string,
+    fileBuffer: Buffer,
+    mimeType: string,
+    filename: string = 'media_file',
+  ): Promise<{ id: string }> {
+    if (accessToken.includes('mock')) {
+      return { id: `mock_media_${Date.now()}` };
+    }
+
+    try {
+      const form = new FormData();
+      const blob = new Blob([new Uint8Array(fileBuffer)], { type: mimeType });
+      form.append('file', blob, filename);
+      form.append('type', mimeType);
+      form.append('messaging_product', 'whatsapp');
+
+      const res = await fetch(`${this.baseUrl}/${phoneNumberId}/media`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${accessToken}` },
+        body: form,
+      });
+
+      const data: any = await res.json();
+      if (!data?.id) {
+        if (data?.error?.code === 190 || data?.error?.error_subcode === 463) {
+          throw new BadRequestException(
+            'Your Meta Access Token has expired. Please refresh your access token in WhatsApp Connection.',
+          );
+        }
+        const errorMsg = data?.error?.error_user_msg || data?.error?.message || JSON.stringify(data);
+        throw new BadRequestException(`Meta Media Upload Failed: ${errorMsg}`);
+      }
+
+      this.logger.log(`Successfully uploaded media to Meta WhatsApp: ${data.id}`);
+      return { id: data.id };
+    } catch (err: any) {
+      this.logger.error(`Failed to upload media to Meta WhatsApp: ${err.message}`);
+      throw new BadRequestException(err.message);
+    }
+  }
+
+  /**
    * Sends an approved template message to recipient phone
    */
   async sendTemplateMessage(
@@ -247,6 +387,31 @@ export class MetaApiService {
     return this.request<{ success: boolean }>(`${wabaId}/subscribed_apps`, {
       method: 'POST',
       headers: { Authorization: `Bearer ${accessToken}` },
+    });
+  }
+
+  /**
+   * Marks an incoming WhatsApp message as READ (turns double checkmarks BLUE on sender's WhatsApp)
+   */
+  async markMessageAsRead(
+    phoneNumberId: string,
+    accessToken: string,
+    messageId: string,
+  ): Promise<{ success: boolean }> {
+    if (accessToken.includes('mock')) {
+      return { success: true };
+    }
+
+    const payload = {
+      messaging_product: 'whatsapp',
+      status: 'read',
+      message_id: messageId,
+    };
+
+    return this.request<{ success: boolean }>(`${phoneNumberId}/messages`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${accessToken}` },
+      body: JSON.stringify(payload),
     });
   }
 }

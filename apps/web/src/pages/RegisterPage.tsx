@@ -48,12 +48,25 @@ export const RegisterPage: React.FC = () => {
       <div className="absolute top-1/4 left-1/2 -translate-x-1/2 w-[500px] h-[500px] bg-gradient-to-tr from-emerald-600/10 via-indigo-600/10 to-teal-500/10 rounded-full blur-3xl pointer-events-none" />
 
       <div className="w-full max-w-lg space-y-8 relative z-10">
-        <div className="text-center">
-          <div className="inline-flex items-center justify-center w-14 h-14 rounded-2xl bg-gradient-to-tr from-emerald-500 via-teal-500 to-indigo-600 text-white font-black text-2xl shadow-xl shadow-emerald-500/25 mb-4">
-            D
+        <div className="flex flex-col items-center text-center">
+          <div className="relative mb-3">
+            <div className="w-16 h-16 rounded-2xl overflow-hidden shadow-2xl shadow-blue-500/30 border border-blue-500/40 relative group">
+              <img
+                src="/logo-3d.png"
+                alt="Peers Automate 3D Logo"
+                className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+              />
+            </div>
+            <div className="absolute -inset-1 rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-500 to-sky-400 -z-10 blur-sm opacity-50" />
           </div>
-          <h2 className="text-3xl font-extrabold tracking-tight text-white">Create DOOT Workspace</h2>
-          <p className="mt-2 text-sm text-slate-400">
+          <div className="flex items-center gap-2">
+            <span className="text-2xl font-black tracking-tight text-white">PEERS</span>
+            <span className="text-2xl font-black tracking-tight bg-gradient-to-r from-blue-500 via-indigo-400 to-sky-400 bg-clip-text text-transparent">
+              AUTOMATE
+            </span>
+          </div>
+          <h2 className="text-xl font-bold tracking-tight text-slate-200 mt-1">Create Your Workspace</h2>
+          <p className="mt-1 text-xs text-slate-400">
             Launch your independent WhatsApp marketing and customer engagement tenant
           </p>
         </div>

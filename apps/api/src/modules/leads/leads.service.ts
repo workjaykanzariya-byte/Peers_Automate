@@ -33,12 +33,17 @@ export class LeadsService {
           phone: true,
           firstName: true,
           lastName: true,
+          email: true,
           companyName: true,
           leadStatus: true,
           leadSource: true,
           priority: true,
           notes: true,
           followUpDate: true,
+          customFields: true,
+          tags: {
+            include: { tag: true },
+          },
           assignedToUser: {
             select: { id: true, firstName: true, lastName: true },
           },
@@ -59,6 +64,7 @@ export class LeadsService {
     notes?: string,
     priority?: string,
     followUpDate?: string,
+    dealValue?: number,
   ) {
     const contact = await this.prisma.contact.findFirst({
       where: { id: contactId, organizationId },
@@ -68,6 +74,11 @@ export class LeadsService {
       throw new NotFoundException('Lead contact not found');
     }
 
+    const currentCustomFields = (contact.customFields as Record<string, any>) || {};
+    const updatedCustomFields = dealValue !== undefined
+      ? { ...currentCustomFields, dealValue: Number(dealValue) }
+      : currentCustomFields;
+
     return this.prisma.contact.update({
       where: { id: contact.id },
       data: {
@@ -75,6 +86,7 @@ export class LeadsService {
         notes: notes !== undefined ? notes : contact.notes,
         priority: priority !== undefined ? priority : contact.priority,
         followUpDate: followUpDate ? new Date(followUpDate) : contact.followUpDate,
+        customFields: updatedCustomFields,
       },
     });
   }

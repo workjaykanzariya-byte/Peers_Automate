@@ -27,6 +27,14 @@ export class ConversationsService {
   ) {
     const where: any = { organizationId };
 
+    // Enforce active connected WhatsApp phone number isolation so only test number conversations appear
+    const activePhone = await this.prisma.phoneNumber.findFirst({
+      where: { organizationId, status: 'CONNECTED' },
+    });
+    if (activePhone) {
+      where.phoneNumberId = activePhone.id;
+    }
+
     if (query.status) {
       where.status = query.status;
     }
@@ -98,10 +106,11 @@ export class ConversationsService {
           ? {
               body: lastMsg.body,
               direction: lastMsg.direction,
-              status: lastMsg.status,
+              status: (lastMsg.readAt || lastMsg.status === MessageStatus.READ) ? MessageStatus.READ : lastMsg.status,
               createdAt: lastMsg.createdAt,
             }
           : null,
+        lastMessagePreview: lastMsg ? lastMsg.body : null,
         isWindowActive,
         windowRemainingMinutes,
         windowExpiresAt: conv.windowExpiresAt,
@@ -121,7 +130,9 @@ export class ConversationsService {
             assignedToUser: { select: { id: true, firstName: true, lastName: true, email: true } },
           },
         },
-        phoneNumber: true,
+        phoneNumber: {
+          include: { metaIntegration: true },
+        },
         assignedUser: { select: { id: true, firstName: true, lastName: true } },
         messages: {
           orderBy: { createdAt: 'asc' },
@@ -141,6 +152,36 @@ export class ConversationsService {
         data: { unreadCount: 0 },
       });
       conv.unreadCount = 0;
+    }
+
+    // Dispatch Meta Read Receipt (converts checkmarks to BLUE on customer's WhatsApp)
+    const unreadInboundMessages = conv.messages.filter(
+      (m) => m.direction === MessageDirection.INBOUND && m.metaMessageId && m.status !== MessageStatus.READ,
+    );
+
+    if (unreadInboundMessages.length > 0 && conv.phoneNumber?.metaIntegration?.encryptedAccessToken) {
+      await this.prisma.message.updateMany({
+        where: {
+          id: { in: unreadInboundMessages.map((m) => m.id) },
+        },
+        data: {
+          status: MessageStatus.READ,
+          readAt: new Date(),
+        },
+      });
+
+      const latestInbound = unreadInboundMessages[unreadInboundMessages.length - 1];
+      try {
+        const token = this.encryption.decrypt(conv.phoneNumber.metaIntegration.encryptedAccessToken);
+        await this.metaApi.markMessageAsRead(
+          conv.phoneNumber.phoneNumberId,
+          token,
+          latestInbound.metaMessageId,
+        );
+        this.logger.log(`Sent Meta read receipt for message ${latestInbound.metaMessageId} (Blue tick triggered)`);
+      } catch (err: any) {
+        this.logger.warn(`Could not dispatch Meta read receipt: ${err.message}`);
+      }
     }
 
     const now = Date.now();
@@ -168,9 +209,12 @@ export class ConversationsService {
         content: m.body,
         text: m.body,
         mediaUrl: m.mediaUrl,
-        status: m.status,
+        status: (m.readAt || m.status === MessageStatus.READ) ? MessageStatus.READ : m.status,
         errorCode: m.errorCode,
         errorMessage: m.errorMessage,
+        sentAt: m.sentAt,
+        deliveredAt: m.deliveredAt,
+        readAt: m.readAt,
         createdAt: m.createdAt,
       })),
     };
@@ -197,20 +241,25 @@ export class ConversationsService {
     // Decrypt access token
     const plaintextToken = this.encryption.decrypt(conv.phoneNumber.metaIntegration.encryptedAccessToken);
 
+    const effectiveBody = (dto.body || (dto as any).content || '').trim();
     let messageId = `wamid.out_${Date.now()}`;
-    let messageBody = dto.body || '';
+    let messageBody = effectiveBody;
 
     // Enforce 24-hour customer care window per Meta official policy
     if (!isWindowActive) {
-      if (!dto.templateId) {
+      if (!dto.templateId && !(dto as any).templateName) {
         throw new BadRequestException(
           'The 24-hour customer service window has expired. Meta policy requires sending an approved WhatsApp Template message to re-initiate communication.',
         );
       }
 
-      const template = await this.prisma.whatsAppTemplate.findFirst({
-        where: { id: dto.templateId, organizationId, status: 'APPROVED' },
-      });
+      const template = dto.templateId
+        ? await this.prisma.whatsAppTemplate.findFirst({
+            where: { id: dto.templateId, organizationId, status: 'APPROVED' },
+          })
+        : await this.prisma.whatsAppTemplate.findFirst({
+            where: { name: (dto as any).templateName, organizationId, status: 'APPROVED' },
+          });
 
       if (!template) {
         throw new BadRequestException('Selected approved template was not found');
@@ -244,7 +293,7 @@ export class ConversationsService {
       }
     } else {
       // Inside active 24h window: freeform text supported
-      if (!dto.body) {
+      if (!effectiveBody) {
         throw new BadRequestException('Message body cannot be empty');
       }
 
@@ -252,7 +301,7 @@ export class ConversationsService {
         conv.phoneNumber.phoneNumberId,
         plaintextToken,
         conv.contact.phone,
-        dto.body,
+        effectiveBody,
       );
       if (metaRes?.messages?.[0]?.id) {
         messageId = metaRes.messages[0].id;
@@ -280,6 +329,30 @@ export class ConversationsService {
     });
 
     return message;
+  }
+
+  async sendKeepAlive(organizationId: string, userId: string, conversationId: string, customMessage?: string) {
+    const conv = await this.prisma.conversation.findFirst({
+      where: { id: conversationId, organizationId },
+      include: {
+        contact: true,
+        phoneNumber: { include: { metaIntegration: true } },
+      },
+    });
+
+    if (!conv) {
+      throw new NotFoundException('Conversation not found');
+    }
+
+    const contactName = conv.contact.firstName || 'there';
+    const text =
+      (customMessage || '').trim() ||
+      `Hello ${contactName}! 👋 Please stay connected with us. Our team member will shortly connect with you. If you need any assistance right now, please reply here! 💬`;
+
+    return this.sendMessage(organizationId, userId, conversationId, {
+      body: text,
+      type: MessageType.TEXT,
+    });
   }
 
   async updateConversation(

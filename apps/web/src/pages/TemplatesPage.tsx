@@ -25,6 +25,10 @@ import {
   Info,
   Check,
   Copy,
+  Upload,
+  Image as ImageIcon,
+  Video,
+  FileText,
 } from 'lucide-react';
 
 interface TemplateComponent {
@@ -66,15 +70,62 @@ export const TemplatesPage: React.FC = () => {
   // Step 1: Basic Info
   const [name, setName] = useState('');
   const [category, setCategory] = useState<'MARKETING' | 'UTILITY' | 'AUTHENTICATION'>('MARKETING');
-  const [language, setLanguage] = useState('en_US');
+  const [language, setLanguage] = useState('en');
 
   // Step 2: Header
   const [includeHeader, setIncludeHeader] = useState(false);
   const [headerType, setHeaderType] = useState<'TEXT' | 'IMAGE' | 'DOCUMENT' | 'VIDEO'>('TEXT');
   const [headerText, setHeaderText] = useState('');
+  const [headerMediaFile, setHeaderMediaFile] = useState<File | null>(null);
+  const [headerMediaPreview, setHeaderMediaPreview] = useState<string>('');
+  const [headerSampleUrl, setHeaderSampleUrl] = useState<string>('');
+  const [sampleHeaderVariableValues, setSampleHeaderVariableValues] = useState<Record<string, string>>({
+    '{{1}}': 'Valued Customer',
+  });
 
   // Step 3: Message Body
   const [bodyText, setBodyText] = useState('Hello {{1}}, thank you for choosing our services! Your request code is {{2}}.');
+  const [sampleVariableValues, setSampleVariableValues] = useState<Record<string, string>>({
+    '{{1}}': 'Jay',
+    '{{2}}': '123456',
+  });
+
+  // Extract variables dynamically
+  const bodyVariables = Array.from(new Set(bodyText.match(/{{\d+}}/g) || [])).sort((a, b) => {
+    const numA = parseInt(a.replace(/\D/g, ''), 10);
+    const numB = parseInt(b.replace(/\D/g, ''), 10);
+    return numA - numB;
+  });
+
+  const headerVariables = Array.from(new Set(headerText.match(/{{\d+}}/g) || [])).sort((a, b) => {
+    const numA = parseInt(a.replace(/\D/g, ''), 10);
+    const numB = parseInt(b.replace(/\D/g, ''), 10);
+    return numA - numB;
+  });
+
+  const getRenderedBodyPreview = () => {
+    if (!bodyText) return 'Enter your message body...';
+    let rendered = bodyText;
+    bodyVariables.forEach((v) => {
+      const val = sampleVariableValues[v];
+      if (val && val.trim()) {
+        rendered = rendered.split(v).join(val.trim());
+      }
+    });
+    return rendered;
+  };
+
+  const getRenderedHeaderPreview = () => {
+    if (!headerText) return '';
+    let rendered = headerText;
+    headerVariables.forEach((v) => {
+      const val = sampleHeaderVariableValues[v];
+      if (val && val.trim()) {
+        rendered = rendered.split(v).join(val.trim());
+      }
+    });
+    return rendered;
+  };
 
   // Step 4: Footer
   const [includeFooter, setIncludeFooter] = useState(true);
@@ -88,10 +139,16 @@ export const TemplatesPage: React.FC = () => {
     { type: 'URL', text: 'Visit Website', value: 'https://example.com/promo' },
   ]);
 
-  // Fetch templates from backend
+  // Fetch templates from backend with smart auto-polling for pending approvals
   const { data: templates = [], isLoading, refetch, isFetching } = useQuery<Template[]>({
     queryKey: ['templates'],
     queryFn: () => api.get('/templates'),
+    refetchInterval: (query) => {
+      const data = query.state.data as Template[] | undefined;
+      const hasPending = data?.some((t) => t.status === 'PENDING');
+      return hasPending ? 6000 : 30000;
+    },
+    refetchOnWindowFocus: true,
   });
 
   // Sync templates from Meta
@@ -128,11 +185,21 @@ export const TemplatesPage: React.FC = () => {
     setCurrentStep(1);
     setName('');
     setCategory('MARKETING');
-    setLanguage('en_US');
+    setLanguage('en');
     setIncludeHeader(false);
     setHeaderType('TEXT');
     setHeaderText('');
+    setHeaderMediaFile(null);
+    setHeaderMediaPreview('');
+    setHeaderSampleUrl('');
     setBodyText('Hello {{1}}, thank you for choosing our services! Your request code is {{2}}.');
+    setSampleVariableValues({
+      '{{1}}': 'Jay',
+      '{{2}}': '123456',
+    });
+    setSampleHeaderVariableValues({
+      '{{1}}': 'Valued Customer',
+    });
     setIncludeFooter(true);
     setFooterText('Reply STOP to unsubscribe');
     setIncludeButtons(false);
@@ -146,11 +213,19 @@ export const TemplatesPage: React.FC = () => {
     const matches = bodyText.match(/{{\d+}}/g) || [];
     const nextVar = matches.length + 1;
     setBodyText((prev) => `${prev} {{${nextVar}}}`);
+    setSampleVariableValues((prev) => ({
+      ...prev,
+      [`{{${nextVar}}}`]: nextVar === 1 ? 'Jay' : nextVar === 2 ? 'Peers Automate' : `Sample ${nextVar}`,
+    }));
   };
 
   const handleAddHeaderVariable = () => {
     if (!headerText.includes('{{1}}')) {
       setHeaderText((prev) => `${prev} {{1}}`);
+      setSampleHeaderVariableValues((prev) => ({
+        ...prev,
+        '{{1}}': 'Valued Customer',
+      }));
     }
   };
 
@@ -177,24 +252,49 @@ export const TemplatesPage: React.FC = () => {
     // Header component
     if (includeHeader) {
       if (headerType === 'TEXT' && headerText.trim()) {
-        components.push({
+        const headerMatches = headerText.match(/{{\d+}}/g) || [];
+        const headerComp: any = {
           type: 'HEADER',
           format: 'TEXT',
           text: headerText.trim(),
-        });
+        };
+        if (headerMatches.length > 0) {
+          headerComp.example = {
+            header_text: [
+              headerMatches.map((v, i) => {
+                const userVal = sampleHeaderVariableValues[v];
+                return userVal && userVal.trim() ? userVal.trim() : `Sample ${i + 1}`;
+              }),
+            ],
+          };
+        }
+        components.push(headerComp);
       } else if (headerType !== 'TEXT') {
         components.push({
           type: 'HEADER',
           format: headerType,
+          ...(headerSampleUrl ? { example: { header_handle: [headerSampleUrl] } } : {}),
         });
       }
     }
 
     // Body component (Required)
-    components.push({
+    const bodyMatches = bodyText.match(/{{\d+}}/g) || [];
+    const bodyComp: any = {
       type: 'BODY',
       text: bodyText.trim(),
-    });
+    };
+    if (bodyMatches.length > 0) {
+      bodyComp.example = {
+        body_text: [
+          bodyMatches.map((v, i) => {
+            const userVal = sampleVariableValues[v];
+            return userVal && userVal.trim() ? userVal.trim() : `Sample ${i + 1}`;
+          }),
+        ],
+      };
+    }
+    components.push(bodyComp);
 
     // Footer component
     if (includeFooter && footerText.trim()) {
@@ -434,9 +534,30 @@ export const TemplatesPage: React.FC = () => {
                       </div>
                     )}
                     {headerComp && headerComp.format !== 'TEXT' && (
-                      <div className="p-2 rounded bg-black/5 dark:bg-white/5 text-[10px] font-semibold text-slate-600 dark:text-slate-400 flex items-center gap-1.5">
-                        <Smartphone className="w-3 h-3 text-emerald-500" />
-                        Header Media [{headerComp.format}]
+                      <div className="rounded-xl overflow-hidden border border-slate-200/80 dark:border-slate-800 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-indigo-500/10 dark:from-emerald-950/40 dark:via-teal-950/20 dark:to-indigo-950/30 p-2.5 flex items-center justify-between shadow-xs mb-2">
+                        <div className="flex items-center gap-2.5">
+                          <div className="w-8 h-8 rounded-lg bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                            {headerComp.format === 'IMAGE' ? (
+                              <ImageIcon className="w-4 h-4" />
+                            ) : headerComp.format === 'VIDEO' ? (
+                              <Video className="w-4 h-4" />
+                            ) : (
+                              <FileText className="w-4 h-4" />
+                            )}
+                          </div>
+                          <div>
+                            <div className="text-[11px] font-bold text-slate-800 dark:text-slate-200 flex items-center gap-1.5">
+                              Header {headerComp.format}
+                              <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-semibold uppercase tracking-wider">
+                                Dynamic Media
+                              </span>
+                            </div>
+                            <div className="text-[10px] text-slate-400">
+                              Attach custom {headerComp.format.toLowerCase()} per message
+                            </div>
+                          </div>
+                        </div>
+                        <Smartphone className="w-3.5 h-3.5 text-emerald-500/60" />
                       </div>
                     )}
 
@@ -610,11 +731,20 @@ export const TemplatesPage: React.FC = () => {
                         <select
                           value={language}
                           onChange={(e) => setLanguage(e.target.value)}
-                          className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-500"
+                          className="w-full bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-500 font-medium"
                         >
+                          <option value="en">English (India / General) - en</option>
                           <option value="en_US">English (US) - en_US</option>
                           <option value="en_GB">English (UK) - en_GB</option>
-                          <option value="hi_IN">Hindi (India) - hi_IN</option>
+                          <option value="hi">Hindi (India) - hi</option>
+                          <option value="gu">Gujarati (India) - gu</option>
+                          <option value="mr">Marathi (India) - mr</option>
+                          <option value="ta">Tamil (India) - ta</option>
+                          <option value="te">Telugu (India) - te</option>
+                          <option value="kn">Kannada (India) - kn</option>
+                          <option value="bn">Bengali (India) - bn</option>
+                          <option value="ml">Malayalam (India) - ml</option>
+                          <option value="pa">Punjabi (India) - pa</option>
                           <option value="es_ES">Spanish (Spain) - es_ES</option>
                           <option value="pt_BR">Portuguese (Brazil) - pt_BR</option>
                           <option value="ar">Arabic - ar</option>
@@ -716,10 +846,108 @@ export const TemplatesPage: React.FC = () => {
                             <div className="text-right text-[10px] text-slate-400 mt-1">
                               {headerText.length}/60 Characters
                             </div>
+
+                            {headerVariables.length > 0 && (
+                              <div className="p-3 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/25 border border-emerald-200 dark:border-emerald-800/40 space-y-2 mt-2">
+                                <label className="text-[11px] font-bold text-emerald-950 dark:text-emerald-200 flex items-center gap-1.5">
+                                  <Sparkles className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                                  Header Variable Sample Value (Live Preview & Meta Review)
+                                </label>
+                                {headerVariables.map((v) => (
+                                  <div key={v} className="flex items-center gap-2">
+                                    <span className="text-xs font-mono font-bold text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">{v}:</span>
+                                    <input
+                                      type="text"
+                                      placeholder="e.g. VIP Member"
+                                      value={sampleHeaderVariableValues[v] || ''}
+                                      onChange={(e) => {
+                                        const val = e.target.value;
+                                        setSampleHeaderVariableValues((prev) => ({
+                                          ...prev,
+                                          [v]: val,
+                                        }));
+                                      }}
+                                      className="flex-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-500"
+                                    />
+                                  </div>
+                                ))}
+                              </div>
+                            )}
                           </div>
                         ) : (
-                          <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-dashed border-slate-200 dark:border-slate-800 text-center text-xs text-slate-500 dark:text-slate-400">
-                            Meta requires media headers ([{headerType}]) to be provided as dynamic URLs or Media IDs during campaign dispatch.
+                          <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 space-y-3">
+                            <div className="flex items-center justify-between">
+                              <label className="text-xs font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1.5">
+                                {headerType === 'IMAGE' && <ImageIcon className="w-4 h-4 text-emerald-500" />}
+                                {headerType === 'VIDEO' && <Video className="w-4 h-4 text-emerald-500" />}
+                                {headerType === 'DOCUMENT' && <FileText className="w-4 h-4 text-emerald-500" />}
+                                Header {headerType} File Upload & Sample Media
+                              </label>
+                              <span className="text-[10px] uppercase font-bold text-emerald-600 dark:text-emerald-400">
+                                Required by Meta
+                              </span>
+                            </div>
+
+                            {/* File Upload Dropzone */}
+                            <div className="border border-dashed border-slate-300 dark:border-slate-700 rounded-xl p-4 bg-white dark:bg-slate-900 text-center hover:border-emerald-500 transition">
+                              <input
+                                type="file"
+                                id="header-file-upload-input"
+                                className="hidden"
+                                accept={
+                                  headerType === 'IMAGE'
+                                    ? 'image/jpeg,image/png'
+                                    : headerType === 'VIDEO'
+                                    ? 'video/mp4,video/3gpp'
+                                    : '.pdf,.doc,.docx'
+                                }
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    setHeaderMediaFile(file);
+                                    const url = URL.createObjectURL(file);
+                                    setHeaderMediaPreview(url);
+                                  }
+                                }}
+                              />
+                              <label
+                                htmlFor="header-file-upload-input"
+                                className="cursor-pointer flex flex-col items-center justify-center gap-1.5"
+                              >
+                                <div className="w-10 h-10 rounded-full bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400 mb-1">
+                                  <Upload className="w-5 h-5" />
+                                </div>
+                                <span className="text-xs font-bold text-emerald-700 dark:text-emerald-400 hover:underline">
+                                  {headerMediaFile ? headerMediaFile.name : `Click to upload ${headerType.toLowerCase()} file`}
+                                </span>
+                                <span className="text-[11px] text-slate-400">
+                                  {headerMediaFile
+                                    ? `${(headerMediaFile.size / 1024).toFixed(1)} KB — Uploaded successfully`
+                                    : headerType === 'IMAGE'
+                                    ? 'Supports JPG, PNG (Max 5MB)'
+                                    : headerType === 'VIDEO'
+                                    ? 'Supports MP4 (Max 16MB)'
+                                    : 'Supports PDF (Max 100MB)'}
+                                </span>
+                              </label>
+                            </div>
+
+                            {/* Sample URL Input Option */}
+                            <div>
+                              <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 mb-1">
+                                Or Provide Sample Public Media URL
+                              </label>
+                              <input
+                                type="url"
+                                placeholder={`https://example.com/sample-${headerType.toLowerCase()}.${headerType === 'IMAGE' ? 'jpg' : headerType === 'VIDEO' ? 'mp4' : 'pdf'}`}
+                                value={headerSampleUrl}
+                                onChange={(e) => setHeaderSampleUrl(e.target.value)}
+                                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg px-3 py-2 text-xs text-slate-900 dark:text-slate-100 font-mono focus:outline-none focus:border-emerald-500"
+                              />
+                              <p className="text-[10px] text-slate-400 mt-1">
+                                Meta requires a sample media header to review and approve your template.
+                              </p>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -804,6 +1032,46 @@ export const TemplatesPage: React.FC = () => {
                         <span>{bodyText.length}/1024 Characters</span>
                       </div>
                     </div>
+
+                    {/* Real-time Sample Variables Input Section */}
+                    {bodyVariables.length > 0 && (
+                      <div className="p-4 rounded-xl bg-emerald-50/70 dark:bg-emerald-950/25 border border-emerald-200 dark:border-emerald-800/40 space-y-3">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-bold text-emerald-950 dark:text-emerald-200 flex items-center gap-1.5">
+                            <Sparkles className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                            Sample Variable Values (Real-Time Live Preview)
+                          </label>
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-500/20 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/30">
+                            {bodyVariables.length} Variable{bodyVariables.length > 1 ? 's' : ''} Active
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-emerald-900/80 dark:text-slate-400 leading-relaxed">
+                          Enter real-time sample values for each dynamic variable below. These values update the WhatsApp live preview on the right instantly and are submitted to Meta to ensure immediate template approval.
+                        </p>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                          {bodyVariables.map((v) => (
+                            <div key={v} className="space-y-1">
+                              <label className="text-[11px] font-bold text-slate-700 dark:text-slate-300 flex items-center gap-1">
+                                Variable <code className="text-emerald-700 dark:text-emerald-400 font-mono px-1.5 py-0.5 rounded bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800">{v}</code> Sample:
+                              </label>
+                              <input
+                                type="text"
+                                placeholder={`e.g. ${v === '{{1}}' ? 'Jay' : v === '{{2}}' ? 'Peers Automate' : 'Sample Value'}`}
+                                value={sampleVariableValues[v] || ''}
+                                onChange={(e) => {
+                                  const val = e.target.value;
+                                  setSampleVariableValues((prev) => ({
+                                    ...prev,
+                                    [v]: val,
+                                  }));
+                                }}
+                                className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl px-3 py-2 text-xs text-slate-900 dark:text-slate-100 focus:outline-none focus:border-emerald-500 shadow-2xs font-sans"
+                              />
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -1035,13 +1303,41 @@ export const TemplatesPage: React.FC = () => {
                         <div>
                           {headerType === 'TEXT' && headerText && (
                             <h4 className="font-bold text-slate-900 dark:text-slate-100 text-xs border-b border-black/5 dark:border-white/5 pb-1.5">
-                              {headerText}
+                              {getRenderedHeaderPreview()}
                             </h4>
                           )}
                           {headerType !== 'TEXT' && (
-                            <div className="h-28 rounded-xl bg-slate-200 dark:bg-slate-800/80 flex flex-col items-center justify-center text-slate-500 text-[11px] gap-1 border border-dashed border-slate-300 dark:border-slate-700">
-                              <Smartphone className="w-5 h-5 text-emerald-500" />
-                              <span>Attached {headerType} Header</span>
+                            <div className="rounded-xl overflow-hidden">
+                              {headerType === 'IMAGE' ? (
+                                headerMediaPreview || headerSampleUrl ? (
+                                  <img
+                                    src={headerMediaPreview || headerSampleUrl}
+                                    alt="Header Image Preview"
+                                    className="w-full h-36 object-cover rounded-xl"
+                                    onError={(e) => {
+                                      (e.target as HTMLElement).style.display = 'none';
+                                    }}
+                                  />
+                                ) : (
+                                  <div className="h-28 rounded-xl bg-slate-200 dark:bg-slate-800/80 flex flex-col items-center justify-center text-slate-500 text-[11px] gap-1 border border-dashed border-slate-300 dark:border-slate-700">
+                                    <ImageIcon className="w-6 h-6 text-emerald-500" />
+                                    <span>[Attached Image Header]</span>
+                                  </div>
+                                )
+                              ) : headerType === 'VIDEO' ? (
+                                <div className="h-32 rounded-xl bg-slate-800 flex flex-col items-center justify-center text-slate-300 text-xs gap-1.5">
+                                  <Video className="w-6 h-6 text-emerald-400" />
+                                  <span>{headerMediaFile ? headerMediaFile.name : '[Video Header Attached]'}</span>
+                                </div>
+                              ) : (
+                                <div className="p-3 rounded-xl bg-slate-100 dark:bg-slate-800/80 flex items-center gap-2.5 text-xs font-semibold text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                                  <FileText className="w-6 h-6 text-rose-500 shrink-0" />
+                                  <div className="min-w-0">
+                                    <div className="truncate font-bold">{headerMediaFile ? headerMediaFile.name : 'Document.pdf'}</div>
+                                    <div className="text-[10px] text-slate-400">PDF Document • 1 Page</div>
+                                  </div>
+                                </div>
+                              )}
                             </div>
                           )}
                         </div>
@@ -1049,7 +1345,7 @@ export const TemplatesPage: React.FC = () => {
 
                       {/* Body Content */}
                       <p className="text-slate-800 dark:text-slate-200 text-xs leading-relaxed whitespace-pre-wrap">
-                        {bodyText || 'Enter your message body...'}
+                        {getRenderedBodyPreview()}
                       </p>
 
                       {/* Footer */}

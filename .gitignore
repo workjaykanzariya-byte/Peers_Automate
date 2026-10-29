@@ -14,3 +14,5 @@ apps/web/dist
 apps/worker/dist
 *.rdb
 *.tsbuildinfo
+*.exe
+inspect_state.js

@@ -10,6 +10,7 @@
   "scripts": {
     "build": "npm run build --workspaces",
     "test": "npm run test --workspaces --if-present",
+    "dev": "concurrently -n \"API,WEB\" -c \"cyan,magenta\" \"npm run dev:api\" \"npm run dev:web\"",
     "dev:api": "npm run start:dev --workspace=@doot/api",
     "dev:web": "npm run dev --workspace=@doot/web",
     "prisma:generate": "npm run prisma:generate --workspace=@doot/api",
@@ -17,6 +18,7 @@
     "prisma:studio": "npm run prisma:studio --workspace=@doot/api"
   },
   "devDependencies": {
+    "concurrently": "^10.0.6",
     "typescript": "^5.7.3"
   }
 }

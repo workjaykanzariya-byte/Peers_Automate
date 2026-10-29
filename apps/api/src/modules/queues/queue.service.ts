@@ -20,6 +20,11 @@ export class QueueService implements OnModuleInit, OnModuleDestroy {
       password: password || undefined,
       maxRetriesPerRequest: null,
       enableReadyCheck: false,
+      retryStrategy: (times) => Math.min(times * 100, 3000),
+    });
+
+    this.redisConnection.on('error', (err) => {
+      this.logger.warn(`Redis BullMQ connection notice: ${err.message}`);
     });
   }
 

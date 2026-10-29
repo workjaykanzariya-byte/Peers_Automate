@@ -37,7 +37,7 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
       <div className="h-screen w-screen flex flex-col items-center justify-center bg-[#070b13] text-slate-400 gap-3">
         <div className="w-10 h-10 border-2 border-emerald-500/20 border-t-emerald-400 rounded-full animate-spin" />
         <span className="text-xs font-semibold tracking-wider uppercase font-mono">
-          Authenticating DOOT Workspace...
+          Authenticating Peers Automate Workspace...
         </span>
       </div>
     );
