@@ -4,6 +4,30 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { AppModule } from './app.module';
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { LoggingInterceptor } from './common/interceptors/logging.interceptor';
+
+// Resilient DNS resolver on native Node.js dns module to bypass local ISP DNS hijacks (e.g. facebomk.com poisoning)
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const nativeDns = require('dns');
+try {
+  const originalLookup = nativeDns.lookup;
+  Object.defineProperty(nativeDns, 'lookup', {
+    value: (hostname: string, options: any, callback: any) => {
+      if (typeof options === 'function') {
+        callback = options;
+        options = {};
+      }
+      if (hostname === 'graph.facebook.com') {
+        return originalLookup('57.144.224.141', options, callback);
+      }
+      return originalLookup(hostname, options, callback);
+    },
+    writable: true,
+    configurable: true,
+  });
+} catch {
+  // Ignore if already defined
+}
+
 async function bootstrap() {
   const logger = new Logger('Bootstrap');
   const app = await NestFactory.create(AppModule);
