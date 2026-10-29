@@ -18,6 +18,7 @@ import { SettingsPage } from './pages/SettingsPage';
 import { AutomationsPage } from './pages/AutomationsPage';
 import { SupportPage } from './pages/SupportPage';
 import { AdminPage } from './pages/AdminPage';
+import { SubscriptionPage } from './pages/SubscriptionPage';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -89,6 +90,7 @@ export const App: React.FC = () => {
               <Route path="templates" element={<TemplatesPage />} />
               <Route path="campaigns" element={<CampaignsPage />} />
               <Route path="webhooks" element={<WebhooksPage />} />
+              <Route path="subscription" element={<SubscriptionPage />} />
               <Route path="support" element={<SupportPage />} />
               <Route path="settings" element={<SettingsPage />} />
               <Route

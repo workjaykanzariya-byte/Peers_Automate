@@ -3,6 +3,7 @@ import { PrismaService } from '../../database/prisma.service';
 import { QueueService } from '../queues/queue.service';
 import { EncryptionService } from '../../security/encryption.service';
 import { WebhooksService } from '../webhooks/webhooks.service';
+import { BillingService } from '../billing/billing.service';
 import { OrganizationStatus, UserRole } from '@doot/shared';
 import * as argon2 from 'argon2';
 import * as crypto from 'crypto';
@@ -16,6 +17,7 @@ export class AdminService {
     private readonly queueService: QueueService,
     private readonly encryption: EncryptionService,
     private readonly webhooksService: WebhooksService,
+    private readonly billingService: BillingService,
   ) {}
 
   /**
@@ -272,16 +274,213 @@ export class AdminService {
    */
   async listPlans() {
     return this.prisma.plan.findMany({
+      include: {
+        _count: {
+          select: { subscriptions: true },
+        },
+      },
       orderBy: { monthlyPrice: 'asc' },
+    });
+  }
+
+  async createPlan(data: any) {
+    const rawTier = data.tier || data.name.toUpperCase().replace(/\s+/g, '_');
+    const tier = rawTier.trim().toUpperCase();
+
+    const existing = await this.prisma.plan.findUnique({
+      where: { tier },
+    });
+    if (existing) {
+      throw new ConflictException(`Plan tier '${tier}' already exists`);
+    }
+
+    return this.prisma.plan.create({
+      data: {
+        name: data.name.trim(),
+        tier,
+        monthlyPrice: Number(data.monthlyPrice) || 0,
+        annualPrice: Number(data.annualPrice) || 0,
+        currency: data.currency || 'INR',
+        maxContacts: Number(data.maxContacts) || 1000,
+        maxMonthlyMessages: Number(data.maxMonthlyMessages) || 2500,
+        maxPhoneNumbers: Number(data.maxPhoneNumbers) || 1,
+        maxTeamMembers: Number(data.maxTeamMembers) || 2,
+        features: Array.isArray(data.features) ? data.features : [],
+        isActive: data.isActive ?? true,
+      },
     });
   }
 
   async updatePlan(planId: string, data: any) {
     return this.prisma.plan.update({
       where: { id: planId },
-      data,
+      data: {
+        name: data.name !== undefined ? data.name.trim() : undefined,
+        tier: data.tier !== undefined ? data.tier.trim().toUpperCase() : undefined,
+        monthlyPrice: data.monthlyPrice !== undefined ? Number(data.monthlyPrice) : undefined,
+        annualPrice: data.annualPrice !== undefined ? Number(data.annualPrice) : undefined,
+        currency: data.currency !== undefined ? data.currency : undefined,
+        maxContacts: data.maxContacts !== undefined ? Number(data.maxContacts) : undefined,
+        maxMonthlyMessages: data.maxMonthlyMessages !== undefined ? Number(data.maxMonthlyMessages) : undefined,
+        maxPhoneNumbers: data.maxPhoneNumbers !== undefined ? Number(data.maxPhoneNumbers) : undefined,
+        maxTeamMembers: data.maxTeamMembers !== undefined ? Number(data.maxTeamMembers) : undefined,
+        features: data.features !== undefined ? data.features : undefined,
+        isActive: data.isActive !== undefined ? Boolean(data.isActive) : undefined,
+      },
     });
   }
+
+  async deletePlan(planId: string) {
+    const subCount = await this.prisma.subscription.count({
+      where: { planId },
+    });
+
+    if (subCount > 0) {
+      // Soft-deactivate if active subscriptions are tied to it
+      return this.prisma.plan.update({
+        where: { id: planId },
+        data: { isActive: false },
+      });
+    }
+
+    return this.prisma.plan.delete({
+      where: { id: planId },
+    });
+  }
+
+  /**
+   * Razorpay Gateway Settings for Platform Owner
+   */
+  async getRazorpaySettings() {
+    return this.billingService.getRazorpayAdminSettings();
+  }
+
+  async saveRazorpaySettings(dto: any) {
+    return this.billingService.saveRazorpayAdminSettings(dto);
+  }
+
+  /**
+   * One-Click Manual Activation for Customer Organization Subscription
+   */
+  async activateOrgSubscription(
+    orgId: string,
+    dto: { planTier?: string; planId?: string; months?: number; reason?: string },
+    adminUserId: string,
+  ) {
+    const org = await this.prisma.organization.findUnique({
+      where: { id: orgId },
+      include: { subscription: true },
+    });
+
+    if (!org) {
+      throw new NotFoundException(`Customer organization '${orgId}' not found`);
+    }
+
+    let plan = null;
+    if (dto.planId) {
+      plan = await this.prisma.plan.findUnique({ where: { id: dto.planId } });
+    } else if (dto.planTier) {
+      plan = await this.prisma.plan.findUnique({ where: { tier: dto.planTier.toUpperCase() } });
+    }
+
+    if (!plan) {
+      plan = await this.prisma.plan.findFirst({
+        where: { isActive: true },
+        orderBy: { monthlyPrice: 'desc' },
+      });
+    }
+
+    if (!plan) {
+      throw new NotFoundException('No suitable commercial plan found to assign');
+    }
+
+    const months = dto.months && dto.months > 0 ? dto.months : 1;
+    const currentPeriodStart = new Date();
+    const currentPeriodEnd = new Date(Date.now() + months * 30 * 24 * 60 * 60 * 1000);
+
+    const subscription = await this.prisma.subscription.upsert({
+      where: { organizationId: orgId },
+      update: {
+        planId: plan.id,
+        status: 'ACTIVE',
+        currentPeriodStart,
+        currentPeriodEnd,
+        cancelAtPeriodEnd: false,
+        provider: 'MANUAL_ADMIN',
+        providerSubscriptionId: `admin_override_${Date.now()}`,
+      },
+      create: {
+        organizationId: orgId,
+        planId: plan.id,
+        status: 'ACTIVE',
+        currentPeriodStart,
+        currentPeriodEnd,
+        cancelAtPeriodEnd: false,
+        provider: 'MANUAL_ADMIN',
+        providerSubscriptionId: `admin_override_${Date.now()}`,
+      },
+      include: { plan: true },
+    });
+
+    // Update organization status and tier
+    const updatedOrg = await this.prisma.organization.update({
+      where: { id: orgId },
+      data: {
+        planTier: plan.tier,
+        status: OrganizationStatus.ACTIVE,
+      },
+    });
+
+    // Create Invoice record
+    const invoiceNumber = `INV-${new Date().getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`;
+    const invoice = await this.prisma.invoice.create({
+      data: {
+        organizationId: orgId,
+        subscriptionId: subscription.id,
+        invoiceNumber,
+        amount: Number(plan.monthlyPrice) * months,
+        currency: plan.currency || 'INR',
+        status: 'PAID',
+        paidAt: new Date(),
+        metadata: {
+          activatedByAdmin: true,
+          adminUserId,
+          reason: dto.reason || 'Manual Admin Approval / Offline Payment',
+          months,
+          planName: plan.name,
+        },
+      },
+    });
+
+    // Audit Log
+    await this.prisma.auditLog.create({
+      data: {
+        organizationId: orgId,
+        userId: adminUserId,
+        action: 'ADMIN_MANUALLY_ACTIVATED_SUBSCRIPTION',
+        resource: 'ORGANIZATION',
+        resourceId: orgId,
+        metadata: {
+          planTier: plan.tier,
+          planName: plan.name,
+          months,
+          validUntil: currentPeriodEnd.toISOString(),
+          invoiceNumber,
+        },
+      },
+    });
+
+    this.logger.log(`Admin ${adminUserId} manually activated subscription for ${org.name} on ${plan.name} until ${currentPeriodEnd.toISOString()}`);
+
+    return {
+      success: true,
+      message: `Successfully activated ${org.name} on ${plan.name} (${months} month validity)`,
+      subscription,
+      organization: updatedOrg,
+      invoice,
+    };
+  }
+
 
   /**
    * Queue and Worker health inspection across BullMQ queues

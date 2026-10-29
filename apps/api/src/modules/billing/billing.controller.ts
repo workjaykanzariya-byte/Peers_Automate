@@ -1,4 +1,13 @@
-import { Controller, Get, Post, Body, Param, Headers, UseGuards } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Body,
+  Param,
+  Headers,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { BillingService } from './billing.service';
 import { JwtAuthGuard } from '../../common/guards/jwt-auth.guard';
@@ -18,6 +27,12 @@ export class BillingController {
     return this.billingService.getPlans();
   }
 
+  @Get('razorpay/config')
+  @ApiOperation({ summary: 'Get public Razorpay client configuration' })
+  async getRazorpayConfig() {
+    return this.billingService.getRazorpayPublicConfig();
+  }
+
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, TenantContextGuard)
   @Get('subscription')
@@ -28,18 +43,52 @@ export class BillingController {
 
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, TenantContextGuard)
-  @Post('checkout')
-  @ApiOperation({ summary: 'Initiate subscription checkout session' })
-  async createCheckout(
+  @Patch('subscription/auto-renew')
+  @ApiOperation({ summary: 'Enable or disable auto-renew on current subscription' })
+  async toggleAutoRenew(
+    @CurrentTenant() tenant: ITenantContext,
+    @Body() body: { cancelAtPeriodEnd: boolean },
+  ) {
+    return this.billingService.toggleAutoRenew(tenant.organizationId, body.cancelAtPeriodEnd);
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, TenantContextGuard)
+  @Post('razorpay/order')
+  @ApiOperation({ summary: 'Create Razorpay order for subscription payment' })
+  async createRazorpayOrder(
     @CurrentTenant() tenant: ITenantContext,
     @CurrentUser() user: IAuthUser,
     @Body() body: { planId: string; billingCycle?: 'MONTHLY' | 'ANNUAL' },
   ) {
-    return this.billingService.createCheckoutSession(
+    return this.billingService.createRazorpayOrder(
       tenant.organizationId,
       user.id,
       body.planId,
-      body.billingCycle,
+      body.billingCycle || 'MONTHLY',
+    );
+  }
+
+  @ApiBearerAuth()
+  @UseGuards(JwtAuthGuard, TenantContextGuard)
+  @Post('razorpay/verify')
+  @ApiOperation({ summary: 'Verify Razorpay payment signature and activate workspace' })
+  async verifyRazorpayPayment(
+    @CurrentTenant() tenant: ITenantContext,
+    @CurrentUser() user: IAuthUser,
+    @Body()
+    body: {
+      razorpayOrderId: string;
+      razorpayPaymentId: string;
+      razorpaySignature?: string;
+      planId: string;
+      billingCycle: 'MONTHLY' | 'ANNUAL';
+    },
+  ) {
+    return this.billingService.verifyRazorpayPayment(
+      tenant.organizationId,
+      user.id,
+      body,
     );
   }
 

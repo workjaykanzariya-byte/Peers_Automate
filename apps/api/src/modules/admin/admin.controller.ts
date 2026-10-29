@@ -202,11 +202,46 @@ export class AdminController {
     return this.adminService.listPlans();
   }
 
+  @Post('plans')
+  @ApiOperation({ summary: 'Platform Owner: Create new subscription plan' })
+  async createPlan(@Body() data: any) {
+    return this.adminService.createPlan(data);
+  }
+
   @Put('plans/:id')
   @ApiOperation({ summary: 'Update commercial plan limits and pricing' })
   async updatePlan(@Param('id') planId: string, @Body() data: any) {
     return this.adminService.updatePlan(planId, data);
   }
+
+  @Delete('plans/:id')
+  @ApiOperation({ summary: 'Platform Owner: Delete or deactivate subscription plan' })
+  async deletePlan(@Param('id') planId: string) {
+    return this.adminService.deletePlan(planId);
+  }
+
+  @Get('settings/razorpay')
+  @ApiOperation({ summary: 'Platform Owner: Get configured Razorpay Gateway parameters' })
+  async getRazorpaySettings() {
+    return this.adminService.getRazorpaySettings();
+  }
+
+  @Post('settings/razorpay')
+  @ApiOperation({ summary: 'Platform Owner: Save / update Razorpay Key ID and Key Secret' })
+  async saveRazorpaySettings(@Body() dto: any) {
+    return this.adminService.saveRazorpaySettings(dto);
+  }
+
+  @Post('organizations/:id/activate-subscription')
+  @ApiOperation({ summary: 'Platform Owner: Manually mark customer organization subscription as PAID / ACTIVE' })
+  async activateOrgSubscription(
+    @Param('id') orgId: string,
+    @Body() dto: { planTier?: string; planId?: string; months?: number; reason?: string },
+    @CurrentUser() user: IAuthUser,
+  ) {
+    return this.adminService.activateOrgSubscription(orgId, dto, user.id);
+  }
+
 
   @Get('queues')
   @ApiOperation({ summary: 'BullMQ queues & background worker health' })

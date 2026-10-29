@@ -277,6 +277,66 @@ export const AdminPage: React.FC = () => {
     isActive: boolean;
   } | null>(null);
 
+  // Razorpay Gateway Settings State
+  const [razorpayForm, setRazorpayForm] = useState({
+    keyId: '',
+    keySecret: '',
+    currency: 'INR',
+    isEnabled: true,
+    accountName: 'Peers Automate Commercial Gateway',
+    showSecret: false,
+  });
+  const [razorpaySaveNotice, setRazorpaySaveNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  // Subscription Manual Activation Modal State
+  const [activateSubModal, setActivateSubModal] = useState<{
+    isOpen: boolean;
+    org: any | null;
+    planTier: string;
+    months: number;
+    reason: string;
+  }>({
+    isOpen: false,
+    org: null,
+    planTier: 'GROWTH',
+    months: 1,
+    reason: 'Manual Admin Approval / Offline Payment',
+  });
+  const [activateSubNotice, setActivateSubNotice] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  // Plan Create / Edit Modal State
+  const [planModal, setPlanModal] = useState<{
+    isOpen: boolean;
+    mode: 'create' | 'edit';
+    planId?: string;
+    name: string;
+    tier: string;
+    monthlyPrice: number;
+    annualPrice: number;
+    currency: string;
+    maxContacts: number;
+    maxMonthlyMessages: number;
+    maxPhoneNumbers: number;
+    maxTeamMembers: number;
+    features: string;
+    isActive: boolean;
+  }>({
+    isOpen: false,
+    mode: 'create',
+    name: '',
+    tier: '',
+    monthlyPrice: 1999,
+    annualPrice: 19990,
+    currency: 'INR',
+    maxContacts: 5000,
+    maxMonthlyMessages: 10000,
+    maxPhoneNumbers: 2,
+    maxTeamMembers: 5,
+    features: 'crm,bot_flows,campaigns,webhooks,official_meta_api',
+    isActive: true,
+  });
+
+
   const handleDeleteOrg = async () => {
     if (!deleteOrgModal.org) return;
     setDeleteOrgModal((prev) => ({ ...prev, isDeleting: true, error: null }));
@@ -339,11 +399,88 @@ export const AdminPage: React.FC = () => {
   });
 
   // 7. Fetch plans
-  const { data: plans, isLoading: plansLoading } = useQuery<PlanItem[]>({
+  const { data: plans, isLoading: plansLoading, refetch: refetchPlans } = useQuery<any[]>({
     queryKey: ['admin-plans'],
-    queryFn: () => api.get<PlanItem[]>('/admin/plans'),
+    queryFn: () => api.get<any[]>('/admin/plans'),
     enabled: activeTab === 'plans',
   });
+
+  // Razorpay Gateway Admin Settings
+  const { data: razorpaySettings, isLoading: razorpayLoading, refetch: refetchRazorpay } = useQuery<any>({
+    queryKey: ['admin-razorpay-settings'],
+    queryFn: () => api.get('/admin/settings/razorpay'),
+    enabled: activeTab === 'plans',
+  });
+
+  React.useEffect(() => {
+    if (razorpaySettings) {
+      setRazorpayForm((prev) => ({
+        ...prev,
+        keyId: razorpaySettings.keyId || '',
+        currency: razorpaySettings.currency || 'INR',
+        isEnabled: razorpaySettings.isEnabled ?? true,
+        accountName: razorpaySettings.accountName || 'Peers Automate Commercial Gateway',
+      }));
+    }
+  }, [razorpaySettings]);
+
+  const saveRazorpayMutation = useMutation({
+    mutationFn: (dto: any) => api.post('/admin/settings/razorpay', dto),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-razorpay-settings'] });
+      setRazorpaySaveNotice({ type: 'success', message: 'Razorpay Gateway credentials saved and encrypted successfully.' });
+      setTimeout(() => setRazorpaySaveNotice(null), 4000);
+    },
+    onError: (err: any) => {
+      setRazorpaySaveNotice({ type: 'error', message: err.message || 'Failed to save Razorpay settings.' });
+    },
+  });
+
+  const activateOrgSubMutation = useMutation({
+    mutationFn: ({ orgId, planTier, months, reason }: any) =>
+      api.post(`/admin/organizations/${orgId}/activate-subscription`, { planTier, months, reason }),
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ['admin-orgs'] });
+      queryClient.invalidateQueries({ queryKey: ['admin-plans'] });
+      refetchOrgs();
+      setActivateSubNotice({ type: 'success', message: data.message || 'Subscription successfully activated!' });
+      setActivateSubModal({ isOpen: false, org: null, planTier: 'GROWTH', months: 1, reason: '' });
+      setTimeout(() => setActivateSubNotice(null), 4000);
+    },
+    onError: (err: any) => {
+      setActivateSubNotice({ type: 'error', message: err.message || 'Failed to activate subscription.' });
+    },
+  });
+
+  const savePlanMutation = useMutation({
+    mutationFn: async (data: any) => {
+      if (planModal.mode === 'create') {
+        return api.post('/admin/plans', data);
+      } else {
+        return api.put(`/admin/plans/${planModal.planId}`, data);
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-plans'] });
+      refetchPlans();
+      setPlanModal((prev) => ({ ...prev, isOpen: false }));
+    },
+    onError: (err: any) => {
+      alert(err.message || 'Failed to save plan.');
+    },
+  });
+
+  const deletePlanMutation = useMutation({
+    mutationFn: (planId: string) => api.delete(`/admin/plans/${planId}`),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin-plans'] });
+      refetchPlans();
+    },
+    onError: (err: any) => {
+      alert(err.message || 'Failed to delete plan.');
+    },
+  });
+
 
   // 8. Fetch audit logs
   const { data: auditData, isLoading: auditLoading } = useQuery<{ data: any[]; meta: any }>({
@@ -950,6 +1087,18 @@ export const AdminPage: React.FC = () => {
             </div>
           )}
 
+          {activateSubNotice && (
+            <div className="p-3.5 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/30 text-xs font-semibold flex items-center justify-between shadow-2xs">
+              <div className="flex items-center gap-2">
+                <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                <span>{activateSubNotice.message}</span>
+              </div>
+              <button onClick={() => setActivateSubNotice(null)} className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
           <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 overflow-hidden shadow-xs">
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs">
@@ -957,6 +1106,7 @@ export const AdminPage: React.FC = () => {
                   <tr className="border-b border-slate-200 dark:border-slate-800 bg-slate-50/90 dark:bg-slate-900/90 text-slate-600 dark:text-slate-400 uppercase tracking-wider font-semibold">
                     <th className="px-5 py-3.5">Organization</th>
                     <th className="px-5 py-3.5">Plan Tier</th>
+                    <th className="px-5 py-3.5">Subscription</th>
                     <th className="px-5 py-3.5">Status</th>
                     <th className="px-5 py-3.5">Team</th>
                     <th className="px-5 py-3.5">Contacts</th>
@@ -968,19 +1118,21 @@ export const AdminPage: React.FC = () => {
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
                   {orgsLoading ? (
                     <tr>
-                      <td colSpan={8} className="px-5 py-8 text-center text-slate-400 font-mono">
+                      <td colSpan={9} className="px-5 py-8 text-center text-slate-400 font-mono">
                         Loading customer organizations...
                       </td>
                     </tr>
                   ) : filteredOrs.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="px-5 py-8 text-center text-slate-500">
+                      <td colSpan={9} className="px-5 py-8 text-center text-slate-500">
                         No organizations found matching search criteria.
                       </td>
                     </tr>
                   ) : (
                     filteredOrs.map((org) => {
                       const isSuspended = org.status === 'SUSPENDED';
+                      const sub = (org as any).subscription;
+                      const isSubActive = sub?.status === 'ACTIVE';
                       return (
                         <tr key={org.id} className="hover:bg-slate-50/80 dark:hover:bg-slate-800/30 transition">
                           <td
@@ -1003,6 +1155,18 @@ export const AdminPage: React.FC = () => {
                           </td>
                           <td className="px-5 py-4">
                             <span
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold inline-flex items-center gap-1 ${
+                                isSubActive
+                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-300 dark:border-emerald-500/30'
+                                  : 'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/20 dark:text-amber-300 dark:border-amber-500/30'
+                              }`}
+                            >
+                              <span className={`w-1.5 h-1.5 rounded-full ${isSubActive ? 'bg-emerald-500' : 'bg-amber-500'}`} />
+                              <span>{isSubActive ? 'ACTIVE' : 'PENDING'}</span>
+                            </span>
+                          </td>
+                          <td className="px-5 py-4">
+                            <span
                               className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                                 isSuspended
                                   ? 'bg-rose-50 text-rose-700 border border-rose-200 dark:bg-rose-500/20 dark:text-rose-300 dark:border-rose-500/40'
@@ -1017,6 +1181,23 @@ export const AdminPage: React.FC = () => {
                           <td className="px-5 py-4 text-slate-700 dark:text-slate-300 font-medium">{org._count?.campaigns || 0}</td>
                           <td className="px-5 py-4 text-slate-500 dark:text-slate-400 text-[11px]">{new Date(org.createdAt).toLocaleDateString()}</td>
                           <td className="px-5 py-4 text-right space-x-2">
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setActivateSubModal({
+                                  isOpen: true,
+                                  org,
+                                  planTier: org.planTier || 'GROWTH',
+                                  months: 1,
+                                  reason: 'Manual Admin Approval / Offline Payment',
+                                });
+                              }}
+                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:hover:bg-emerald-500/25 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 text-xs font-bold transition cursor-pointer shadow-2xs"
+                              title="Mark Subscription as Paid / Activate Workspace"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                              <span>Mark Paid</span>
+                            </button>
                             <button
                               onClick={() => {
                                 switchOrganization(org.id, {
@@ -1033,6 +1214,7 @@ export const AdminPage: React.FC = () => {
                               <ExternalLink className="w-3.5 h-3.5" />
                               <span>Login / Switch</span>
                             </button>
+
                             <button
                               onClick={() => {
                                 setSelectedOrgId(org.id);
@@ -1451,48 +1633,321 @@ export const AdminPage: React.FC = () => {
         </div>
       )}
 
-      {/* TAB 7: PLANS & LIMITS */}
+      {/* TAB 7: PLANS & RAZORPAY GATEWAY */}
       {activeTab === 'plans' && (
-        <div className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {plansLoading ? (
-              <div className="col-span-3 text-center py-8 text-slate-400 font-mono text-xs">Loading plans...</div>
-            ) : (
-              (plans || []).map((p) => (
-                <div key={p.id} className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs">
-                  <div className="flex justify-between items-center">
-                    <h3 className="font-extrabold text-slate-900 dark:text-white text-lg">{p.name}</h3>
-                    <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-indigo-50 text-indigo-700 border border-indigo-200 dark:bg-indigo-500/20 dark:text-indigo-300 dark:border-indigo-500/40">
-                      {p.tier}
-                    </span>
-                  </div>
-                  <div className="text-3xl font-black text-slate-900 dark:text-white">
-                    ${p.monthlyPrice} <span className="text-xs font-normal text-slate-500 dark:text-slate-400">/ month</span>
-                  </div>
-                  <div className="space-y-2 text-xs border-t border-slate-100 dark:border-slate-800 pt-4 text-slate-700 dark:text-slate-300">
-                    <div className="flex justify-between">
-                      <span className="text-slate-500 dark:text-slate-400">Max Contacts:</span>
-                      <span className="font-bold text-slate-900 dark:text-slate-200">{p.maxContacts.toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500 dark:text-slate-400">Monthly Messages:</span>
-                      <span className="font-bold text-slate-900 dark:text-slate-200">{p.maxMonthlyMessages.toLocaleString()}</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500 dark:text-slate-400">Phone Numbers:</span>
-                      <span className="font-bold text-slate-900 dark:text-slate-200">{p.maxPhoneNumbers} lines</span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span className="text-slate-500 dark:text-slate-400">Team Seats:</span>
-                      <span className="font-bold text-slate-900 dark:text-slate-200">{p.maxTeamMembers} seats</span>
-                    </div>
+        <div className="space-y-6">
+          {/* Razorpay Gateway Settings Card */}
+          <div className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs space-y-5">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                  <CreditCard className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-900 dark:text-white text-base">Razorpay Payment Gateway</h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Configure your live or test Razorpay credentials to accept card, UPI, and netbanking subscriptions.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <span
+                  className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-wider flex items-center gap-1.5 ${
+                    razorpaySettings?.isConfigured && razorpaySettings?.isEnabled
+                      ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-300'
+                      : 'bg-amber-50 text-amber-700 border border-amber-200 dark:bg-amber-500/20 dark:text-amber-300'
+                  }`}
+                >
+                  <span
+                    className={`w-2 h-2 rounded-full ${
+                      razorpaySettings?.isConfigured && razorpaySettings?.isEnabled
+                        ? 'bg-emerald-500 animate-pulse'
+                        : 'bg-amber-500'
+                    }`}
+                  />
+                  <span>
+                    {razorpaySettings?.isConfigured && razorpaySettings?.isEnabled
+                      ? 'Gateway Active'
+                      : 'Credentials Needed'}
+                  </span>
+                </span>
+              </div>
+            </div>
+
+            {razorpaySaveNotice && (
+              <div
+                className={`p-3.5 rounded-xl text-xs font-semibold flex items-center justify-between ${
+                  razorpaySaveNotice.type === 'success'
+                    ? 'bg-emerald-50 text-emerald-800 border border-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-300'
+                    : 'bg-rose-50 text-rose-800 border border-rose-200 dark:bg-rose-500/20 dark:text-rose-300'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4" />
+                  <span>{razorpaySaveNotice.message}</span>
+                </div>
+                <button onClick={() => setRazorpaySaveNotice(null)} className="p-1">
+                  <X className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                saveRazorpayMutation.mutate(razorpayForm);
+              }}
+              className="space-y-4 text-xs"
+            >
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1.5">
+                    Razorpay Key ID *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. rzp_live_xxxxxxxxxxxx or rzp_test_xxxxxxxxxxxx"
+                    value={razorpayForm.keyId}
+                    onChange={(e) => setRazorpayForm({ ...razorpayForm, keyId: e.target.value })}
+                    className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1.5">
+                    Razorpay Key Secret *
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={razorpayForm.showSecret ? 'text' : 'password'}
+                      placeholder={
+                        razorpaySettings?.hasSecret
+                          ? '•••••••••••••••••••• (Leave blank to keep existing)'
+                          : 'Enter razorpay key secret'
+                      }
+                      value={razorpayForm.keySecret}
+                      onChange={(e) => setRazorpayForm({ ...razorpayForm, keySecret: e.target.value })}
+                      className="w-full pl-3.5 pr-10 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-emerald-500"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setRazorpayForm({ ...razorpayForm, showSecret: !razorpayForm.showSecret })}
+                      className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+                    >
+                      {razorpayForm.showSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
                   </div>
                 </div>
-              ))
-            )}
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4 items-center pt-2">
+                <div>
+                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1.5">Billing Currency</label>
+                  <select
+                    value={razorpayForm.currency}
+                    onChange={(e) => setRazorpayForm({ ...razorpayForm, currency: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
+                  >
+                    <option value="INR">INR (₹ Indian Rupee)</option>
+                    <option value="USD">USD ($ US Dollar)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1.5">Merchant Display Name</label>
+                  <input
+                    type="text"
+                    value={razorpayForm.accountName}
+                    onChange={(e) => setRazorpayForm({ ...razorpayForm, accountName: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
+                  />
+                </div>
+
+                <div className="flex items-center gap-2 pt-5">
+                  <input
+                    type="checkbox"
+                    id="rzp-enabled"
+                    checked={razorpayForm.isEnabled}
+                    onChange={(e) => setRazorpayForm({ ...razorpayForm, isEnabled: e.target.checked })}
+                    className="w-4 h-4 accent-emerald-600 rounded cursor-pointer"
+                  />
+                  <label htmlFor="rzp-enabled" className="text-slate-700 dark:text-slate-300 font-bold cursor-pointer">
+                    Enable Razorpay Gateway
+                  </label>
+                </div>
+              </div>
+
+              <div className="flex justify-end pt-2">
+                <button
+                  type="submit"
+                  disabled={saveRazorpayMutation.isPending}
+                  className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition shadow-xs flex items-center gap-2 cursor-pointer active:scale-98"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>{saveRazorpayMutation.isPending ? 'Saving Gateway Settings...' : 'Save Razorpay Credentials'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+
+          {/* Subscription Plans Section */}
+          <div className="space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="font-extrabold text-slate-900 dark:text-white text-base">Commercial Subscription Plans</h3>
+                <p className="text-xs text-slate-500 dark:text-slate-400">
+                  Manage tiers, pricing in Indian Rupees (₹), monthly message quotas, and phone line allocations.
+                </p>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => {
+                  setPlanModal({
+                    isOpen: true,
+                    mode: 'create',
+                    name: '',
+                    tier: '',
+                    monthlyPrice: 1999,
+                    annualPrice: 19990,
+                    currency: 'INR',
+                    maxContacts: 5000,
+                    maxMonthlyMessages: 15000,
+                    maxPhoneNumbers: 2,
+                    maxTeamMembers: 5,
+                    features: 'crm,bot_flows,campaigns,webhooks,official_meta_api',
+                    isActive: true,
+                  });
+                }}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold transition shadow-xs cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>Create Subscription Plan</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {plansLoading ? (
+                <div className="col-span-3 text-center py-8 text-slate-400 font-mono text-xs">Loading plans...</div>
+              ) : (
+                (plans || []).map((p) => (
+                  <div
+                    key={p.id}
+                    className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs flex flex-col justify-between"
+                  >
+                    <div className="space-y-4">
+                      <div className="flex justify-between items-start">
+                        <div>
+                          <h3 className="font-extrabold text-slate-900 dark:text-white text-lg">{p.name}</h3>
+                          <span className="text-[11px] font-mono text-slate-400 uppercase font-bold">{p.tier}</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span
+                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                              p.isActive !== false
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-300'
+                                : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+                            }`}
+                          >
+                            {p.isActive !== false ? 'Active' : 'Archived'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1">
+                        <div className="text-3xl font-black text-slate-900 dark:text-white font-mono">
+                          ₹{Number(p.monthlyPrice).toLocaleString('en-IN')}{' '}
+                          <span className="text-xs font-normal text-slate-500 dark:text-slate-400 font-sans">
+                            / month
+                          </span>
+                        </div>
+                        <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                          Annual: ₹{Number(p.annualPrice || p.monthlyPrice * 10).toLocaleString('en-IN')} / year
+                        </div>
+                      </div>
+
+                      <div className="space-y-2 text-xs border-t border-slate-100 dark:border-slate-800 pt-4 text-slate-700 dark:text-slate-300">
+                        <div className="flex justify-between">
+                          <span className="text-slate-500 dark:text-slate-400">Max Contacts:</span>
+                          <span className="font-bold text-slate-900 dark:text-slate-200">
+                            {p.maxContacts?.toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500 dark:text-slate-400">Monthly Messages:</span>
+                          <span className="font-bold text-slate-900 dark:text-slate-200">
+                            {p.maxMonthlyMessages?.toLocaleString()}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500 dark:text-slate-400">Phone Numbers:</span>
+                          <span className="font-bold text-slate-900 dark:text-slate-200">{p.maxPhoneNumbers} lines</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-500 dark:text-slate-400">Team Seats:</span>
+                          <span className="font-bold text-slate-900 dark:text-slate-200">{p.maxTeamMembers} seats</span>
+                        </div>
+                        {p._count?.subscriptions !== undefined && (
+                          <div className="flex justify-between pt-1 border-t border-slate-100 dark:border-slate-800">
+                            <span className="text-slate-500 dark:text-slate-400">Active Tenants:</span>
+                            <span className="font-bold text-emerald-600 dark:text-emerald-400">
+                              {p._count.subscriptions} organizations
+                            </span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="pt-4 border-t border-slate-100 dark:border-slate-800 flex items-center justify-end gap-2">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setPlanModal({
+                            isOpen: true,
+                            mode: 'edit',
+                            planId: p.id,
+                            name: p.name,
+                            tier: p.tier,
+                            monthlyPrice: Number(p.monthlyPrice),
+                            annualPrice: Number(p.annualPrice || p.monthlyPrice * 10),
+                            currency: p.currency || 'INR',
+                            maxContacts: p.maxContacts,
+                            maxMonthlyMessages: p.maxMonthlyMessages,
+                            maxPhoneNumbers: p.maxPhoneNumbers,
+                            maxTeamMembers: p.maxTeamMembers,
+                            features: Array.isArray(p.features) ? p.features.join(',') : '',
+                            isActive: p.isActive !== false,
+                          });
+                        }}
+                        className="px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 dark:bg-slate-800 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-semibold transition cursor-pointer flex items-center gap-1.5"
+                      >
+                        <Edit3 className="w-3.5 h-3.5" />
+                        <span>Edit</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (confirm(`Are you sure you want to delete or deactivate plan "${p.name}"?`)) {
+                            deletePlanMutation.mutate(p.id);
+                          }
+                        }}
+                        className="px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 dark:bg-rose-500/10 dark:hover:bg-rose-500/20 text-rose-700 dark:text-rose-300 text-xs font-semibold transition cursor-pointer flex items-center gap-1.5"
+                      >
+                        <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                        <span>Delete</span>
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
       )}
+
 
       {/* TAB 8: QUEUES & WORKERS */}
       {activeTab === 'queues' && (
@@ -3833,6 +4288,338 @@ export const AdminPage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* MODAL: MANUALLY ACTIVATE CUSTOMER SUBSCRIPTION */}
+      {activateSubModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-lg w-full p-6 space-y-5 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-500/15 border border-emerald-200 dark:border-emerald-500/30 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
+                  <CheckCircle2 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-900 dark:text-white text-base">
+                    Activate Workspace Subscription
+                  </h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Grant immediate paid subscription status and unlock customer workspace.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setActivateSubModal({ isOpen: false, org: null, planTier: 'GROWTH', months: 1, reason: '' })}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-xs space-y-1">
+              <div className="text-slate-500">Customer Organization:</div>
+              <div className="font-bold text-slate-900 dark:text-white text-sm">
+                {activateSubModal.org?.name}
+              </div>
+              <div className="font-mono text-[11px] text-slate-400">
+                Slug: {activateSubModal.org?.slug}
+              </div>
+            </div>
+
+            <div className="space-y-4 text-xs">
+              <div>
+                <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1.5">
+                  Select Subscription Tier *
+                </label>
+                <select
+                  value={activateSubModal.planTier}
+                  onChange={(e) => setActivateSubModal({ ...activateSubModal, planTier: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-semibold focus:outline-none focus:border-emerald-500"
+                >
+                  {(plans || []).map((p: any) => (
+                    <option key={p.id} value={p.tier}>
+                      {p.name} ({p.tier}) — ₹{Number(p.monthlyPrice).toLocaleString('en-IN')}/mo
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1.5">
+                  Validity Duration *
+                </label>
+                <select
+                  value={activateSubModal.months}
+                  onChange={(e) => setActivateSubModal({ ...activateSubModal, months: Number(e.target.value) })}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-semibold focus:outline-none focus:border-emerald-500"
+                >
+                  <option value={1}>1 Month (30 Days)</option>
+                  <option value={3}>3 Months (90 Days)</option>
+                  <option value={6}>6 Months (180 Days)</option>
+                  <option value={12}>1 Year / 12 Months (365 Days)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1.5">
+                  Payment Notes / Reason (Optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. Wire transfer confirmed / Cash receipt / Special platform approval"
+                  value={activateSubModal.reason}
+                  onChange={(e) => setActivateSubModal({ ...activateSubModal, reason: e.target.value })}
+                  className="w-full px-3.5 py-2.5 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-emerald-500"
+                />
+              </div>
+
+              <div className="p-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900/40 text-[11px] text-emerald-800 dark:text-emerald-300 leading-relaxed">
+                ✓ Confirming will immediately mark the customer's subscription as <strong>PAID / ACTIVE</strong>, generate a paid invoice record, and unlock all platform features.
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-800">
+              <button
+                type="button"
+                onClick={() => setActivateSubModal({ isOpen: false, org: null, planTier: 'GROWTH', months: 1, reason: '' })}
+                className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={activateOrgSubMutation.isPending}
+                onClick={() => {
+                  activateOrgSubMutation.mutate({
+                    orgId: activateSubModal.org?.id,
+                    planTier: activateSubModal.planTier,
+                    months: activateSubModal.months,
+                    reason: activateSubModal.reason,
+                  });
+                }}
+                className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs transition shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-98"
+              >
+                <Check className="w-4 h-4" />
+                <span>{activateOrgSubMutation.isPending ? 'Activating...' : 'Confirm Activation & Unlock Workspace'}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL: CREATE / EDIT SUBSCRIPTION PLAN */}
+      {planModal.isOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-xs">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl max-w-xl w-full max-h-[90vh] flex flex-col overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between p-5 border-b border-slate-200 dark:border-slate-800">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-indigo-50 dark:bg-indigo-500/15 border border-indigo-200 dark:border-indigo-500/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                  <CreditCard className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-slate-900 dark:text-white text-base">
+                    {planModal.mode === 'create' ? 'Create Subscription Plan' : 'Edit Subscription Plan'}
+                  </h3>
+                  <p className="text-[11px] text-slate-500 dark:text-slate-400">
+                    Define commercial tier limits, pricing in INR (₹), and features.
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setPlanModal({ ...planModal, isOpen: false })}
+                className="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                savePlanMutation.mutate({
+                  name: planModal.name,
+                  tier: planModal.tier,
+                  monthlyPrice: Number(planModal.monthlyPrice),
+                  annualPrice: Number(planModal.annualPrice),
+                  currency: planModal.currency || 'INR',
+                  maxContacts: Number(planModal.maxContacts),
+                  maxMonthlyMessages: Number(planModal.maxMonthlyMessages),
+                  maxPhoneNumbers: Number(planModal.maxPhoneNumbers),
+                  maxTeamMembers: Number(planModal.maxTeamMembers),
+                  features: planModal.features ? planModal.features.split(',').map((s) => s.trim()) : [],
+                  isActive: planModal.isActive,
+                });
+              }}
+              className="p-6 overflow-y-auto space-y-4 text-xs"
+            >
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1.5">Plan Name *</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Starter Plan, Scale Plan"
+                    value={planModal.name}
+                    onChange={(e) => setPlanModal({ ...planModal, name: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-semibold focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1.5">Plan Tier Code *</label>
+                  <input
+                    type="text"
+                    required
+                    disabled={planModal.mode === 'edit'}
+                    placeholder="e.g. STARTER, GROWTH, ENTERPRISE"
+                    value={planModal.tier}
+                    onChange={(e) => setPlanModal({ ...planModal, tier: e.target.value.toUpperCase() })}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-mono uppercase focus:outline-none focus:border-indigo-500 disabled:opacity-60"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1.5">Monthly Price (₹) *</label>
+                  <input
+                    type="number"
+                    required
+                    min="0"
+                    placeholder="1999"
+                    value={planModal.monthlyPrice}
+                    onChange={(e) => setPlanModal({ ...planModal, monthlyPrice: Number(e.target.value) })}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1.5">Annual Price (₹) *</label>
+                  <input
+                    type="number"
+                    required
+                    min="0"
+                    placeholder="19990"
+                    value={planModal.annualPrice}
+                    onChange={(e) => setPlanModal({ ...planModal, annualPrice: Number(e.target.value) })}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white font-mono focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1.5">Currency</label>
+                  <select
+                    value={planModal.currency}
+                    onChange={(e) => setPlanModal({ ...planModal, currency: e.target.value })}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
+                  >
+                    <option value="INR">INR (₹)</option>
+                    <option value="USD">USD ($)</option>
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1.5">Max Contacts</label>
+                  <input
+                    type="number"
+                    required
+                    min="100"
+                    value={planModal.maxContacts}
+                    onChange={(e) => setPlanModal({ ...planModal, maxContacts: Number(e.target.value) })}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1.5">Monthly Messages Limit</label>
+                  <input
+                    type="number"
+                    required
+                    min="500"
+                    value={planModal.maxMonthlyMessages}
+                    onChange={(e) => setPlanModal({ ...planModal, maxMonthlyMessages: Number(e.target.value) })}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1.5">Max Phone Lines</label>
+                  <input
+                    type="number"
+                    required
+                    min="1"
+                    value={planModal.maxPhoneNumbers}
+                    onChange={(e) => setPlanModal({ ...planModal, maxPhoneNumbers: Number(e.target.value) })}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1.5">Max Team Seats</label>
+                  <input
+                    type="number"
+                    required
+                    min="1"
+                    value={planModal.maxTeamMembers}
+                    onChange={(e) => setPlanModal({ ...planModal, maxTeamMembers: Number(e.target.value) })}
+                    className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1.5">
+                  Feature Flags (comma separated)
+                </label>
+                <input
+                  type="text"
+                  placeholder="e.g. crm, bot_flows, campaigns, webhooks, dedicated_support"
+                  value={planModal.features}
+                  onChange={(e) => setPlanModal({ ...planModal, features: e.target.value })}
+                  className="w-full px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-950 border border-slate-200 dark:border-slate-800 text-slate-900 dark:text-white focus:outline-none focus:border-indigo-500"
+                />
+              </div>
+
+              <div className="flex items-center gap-2 pt-2">
+                <input
+                  type="checkbox"
+                  id="plan-active"
+                  checked={planModal.isActive}
+                  onChange={(e) => setPlanModal({ ...planModal, isActive: e.target.checked })}
+                  className="w-4 h-4 accent-indigo-600 rounded cursor-pointer"
+                />
+                <label htmlFor="plan-active" className="text-slate-700 dark:text-slate-300 font-bold cursor-pointer">
+                  Plan is Active and available for purchase
+                </label>
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setPlanModal({ ...planModal, isOpen: false })}
+                  className="px-4 py-2 rounded-xl text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savePlanMutation.isPending}
+                  className="px-5 py-2.5 rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition shadow-xs flex items-center gap-1.5 cursor-pointer active:scale-98"
+                >
+                  <Check className="w-4 h-4" />
+                  <span>{savePlanMutation.isPending ? 'Saving...' : 'Save Subscription Plan'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };

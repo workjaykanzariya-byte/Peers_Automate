@@ -751,3 +751,16 @@ model MessengerIntegration {
   @@map("messenger_integrations")
 }
 
+// ----------------------------------------------------
+// 17. System & Platform Global Settings
+// ----------------------------------------------------
+model SystemSetting {
+  key         String   @id @db.VarChar(100)
+  value       Json
+  description String?  @db.VarChar(255)
+  updatedAt   DateTime @updatedAt @map("updated_at") @db.Timestamptz
+
+  @@map("system_settings")
+}
+
+

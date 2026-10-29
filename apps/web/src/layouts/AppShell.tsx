@@ -36,6 +36,7 @@ import { useTheme } from '../context/ThemeContext';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../services/api';
 import { Logo } from '../components/Logo';
+import { SubscriptionPaywallModal } from '../components/SubscriptionPaywallModal';
 
 export const AppShell: React.FC = () => {
   const { user, organizations, activeOrg, switchOrganization, logout } = useAuth();
@@ -92,6 +93,32 @@ export const AppShell: React.FC = () => {
     }
   }, [totalUnreadCount]);
 
+  // Real-time Subscription gating check
+  const {
+    data: subscription,
+    refetch: refetchSubscription,
+    isFetching: isSubFetching,
+  } = useQuery<any>({
+    queryKey: ['subscription', activeOrg?.id],
+    queryFn: () => api.get('/billing/subscription'),
+    refetchInterval: 10000,
+  });
+
+  const isPaywallActive = React.useMemo(() => {
+    // Platform owners in Admin Console never get blocked
+    if (isAdminRoute || (user?.isPlatformAdmin && adminViewMode === 'admin')) {
+      return false;
+    }
+    // Allow viewing subscription page directly to review invoices or upgrade
+    if (location.pathname === '/subscription') {
+      return false;
+    }
+    if (!subscription) return false;
+    // Block customer app if status is not ACTIVE or is expired
+    return subscription.status !== 'ACTIVE' || subscription.isExpired;
+  }, [isAdminRoute, user?.isPlatformAdmin, adminViewMode, location.pathname, subscription]);
+
+
   // Standard Customer / Tenant Navigation Items
   const customerNavItems = [
     { label: 'Dashboard', icon: LayoutDashboard, path: '/dashboard' },
@@ -103,6 +130,7 @@ export const AppShell: React.FC = () => {
     { label: 'WhatsApp Templates', icon: FileCode, path: '/templates' },
     { label: 'Campaigns & Bulk', icon: Send, path: '/campaigns' },
     { label: 'Webhooks & Logs', icon: Webhook, path: '/webhooks' },
+    { label: 'My Subscription', icon: CreditCard, path: '/subscription' },
     { label: 'Support & Help', icon: LifeBuoy, path: '/support' },
     { label: 'Settings & Team', icon: Settings, path: '/settings' },
   ];
@@ -476,6 +504,13 @@ export const AppShell: React.FC = () => {
           <Outlet />
         </main>
       </div>
+
+      {/* Global Uncloseable Subscription Paywall Modal */}
+      <SubscriptionPaywallModal
+        isOpen={isPaywallActive}
+        onRefresh={refetchSubscription}
+        isRefreshing={isSubFetching}
+      />
     </div>
   );
 };

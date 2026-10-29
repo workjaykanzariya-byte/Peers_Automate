@@ -43,9 +43,14 @@ describe('BillingService', () => {
         return defaultValue;
       }),
     };
+    const mockEncryption = {
+      encrypt: jest.fn().mockReturnValue({ ciphertext: 'mock_encrypted', keyVersion: 'v1' }),
+      decrypt: jest.fn().mockReturnValue('mock_decrypted_secret'),
+    };
     service = new BillingService(
       mockPrisma as unknown as PrismaService,
       mockConfig as unknown as ConfigService,
+      mockEncryption as any,
     );
   });
 
