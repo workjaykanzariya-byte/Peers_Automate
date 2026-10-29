@@ -70,6 +70,22 @@ export const SubscriptionPaywallModal: React.FC<SubscriptionPaywallModalProps> =
     enabled: isOpen,
   });
 
+  const { data: rzpConfig } = useQuery<{
+    isConfigured: boolean;
+    keyId: string;
+    currency: string;
+    isEnabled: boolean;
+  }>({
+    queryKey: ['razorpay-public-config'],
+    queryFn: () => api.get('/billing/razorpay/config'),
+    enabled: isOpen,
+  });
+
+  const activeCurrency = (rzpConfig?.currency || 'INR').toUpperCase();
+  const isUSD = activeCurrency === 'USD';
+  const currencySymbol = isUSD ? '$' : '₹';
+  const currencyLocale = isUSD ? 'en-US' : 'en-IN';
+
   // Automatically default to Growth or first plan
   React.useEffect(() => {
     if (plans.length > 0 && !selectedPlanId) {
@@ -285,7 +301,7 @@ export const SubscriptionPaywallModal: React.FC<SubscriptionPaywallModalProps> =
                     {isSelected && <CheckCircle2 className="w-4 h-4 text-emerald-500 shrink-0" />}
                   </div>
                   <div className="text-xl font-black text-slate-900 dark:text-white font-mono">
-                    ₹{Number(price).toLocaleString('en-IN')}
+                    {currencySymbol}{Number(price).toLocaleString(currencyLocale)}
                     <span className="text-[10px] font-normal text-slate-500 block">
                       / {billingCycle === 'ANNUAL' ? 'year' : 'month'}
                     </span>
@@ -293,8 +309,8 @@ export const SubscriptionPaywallModal: React.FC<SubscriptionPaywallModalProps> =
                 </div>
 
                 <div className="mt-3 pt-2.5 border-t border-slate-200/60 dark:border-slate-800 text-[11px] text-slate-600 dark:text-slate-400 space-y-1">
-                  <div>• {Number(p.maxContacts || 0).toLocaleString('en-IN')} Contacts</div>
-                  <div>• {Number(p.maxMonthlyMessages || 0).toLocaleString('en-IN')} Messages</div>
+                  <div>• {Number(p.maxContacts || 0).toLocaleString()} Contacts</div>
+                  <div>• {Number(p.maxMonthlyMessages || 0).toLocaleString()} Messages</div>
                   <div>• {p.maxPhoneNumbers || 1} WhatsApp Line</div>
                 </div>
               </div>
@@ -307,7 +323,7 @@ export const SubscriptionPaywallModal: React.FC<SubscriptionPaywallModalProps> =
           <div>
             <div className="text-xs text-slate-500 dark:text-slate-400">Total payable amount:</div>
             <div className="text-2xl font-black text-slate-900 dark:text-white font-mono">
-              ₹{Number(selectedPrice).toLocaleString('en-IN')}{' '}
+              {currencySymbol}{Number(selectedPrice).toLocaleString(currencyLocale)}{' '}
               <span className="text-xs font-semibold text-slate-400 font-sans">
                 ({billingCycle === 'ANNUAL' ? 'Yearly' : 'Monthly'})
               </span>

@@ -18,30 +18,49 @@ export class BillingService {
    * List all active subscription plans sorted by price
    */
   async getPlans() {
-    return this.prisma.plan.findMany({
-      where: { isActive: true },
-      orderBy: { monthlyPrice: 'asc' },
-    });
+    const [plans, setting] = await Promise.all([
+      this.prisma.plan.findMany({
+        where: { isActive: true },
+        orderBy: { monthlyPrice: 'asc' },
+      }),
+      this.prisma.systemSetting.findUnique({
+        where: { key: 'razorpay_gateway' },
+      }),
+    ]);
+
+    const gatewayCurrency = ((setting?.value as any)?.currency || 'INR').toUpperCase();
+
+    return plans.map((p) => ({
+      ...p,
+      currency: gatewayCurrency,
+    }));
   }
 
   /**
    * Get subscription details for tenant organization, calculating remaining time & status
    */
   async getSubscription(organizationId: string) {
-    const org = await this.prisma.organization.findUnique({
-      where: { id: organizationId },
-      include: {
-        subscription: {
-          include: {
-            plan: true,
+    const [org, setting] = await Promise.all([
+      this.prisma.organization.findUnique({
+        where: { id: organizationId },
+        include: {
+          subscription: {
+            include: {
+              plan: true,
+            },
           },
         },
-      },
-    });
+      }),
+      this.prisma.systemSetting.findUnique({
+        where: { key: 'razorpay_gateway' },
+      }),
+    ]);
 
     if (!org) {
       throw new NotFoundException('Organization not found');
     }
+
+    const gatewayCurrency = ((setting?.value as any)?.currency || 'INR').toUpperCase();
 
     if (!org.subscription) {
       // Find a default plan
@@ -51,17 +70,19 @@ export class BillingService {
 
       return {
         status: 'PENDING',
-        plan: defaultPlan || {
-          name: 'Starter Plan',
-          tier: 'STARTER',
-          monthlyPrice: 2499,
-          annualPrice: 24990,
-          currency: 'INR',
-          maxContacts: 1000,
-          maxMonthlyMessages: 2500,
-          maxPhoneNumbers: 1,
-          maxTeamMembers: 2,
-        },
+        plan: defaultPlan
+          ? { ...defaultPlan, currency: gatewayCurrency }
+          : {
+              name: 'Starter Plan',
+              tier: 'STARTER',
+              monthlyPrice: 2499,
+              annualPrice: 24990,
+              currency: gatewayCurrency,
+              maxContacts: 1000,
+              maxMonthlyMessages: 2500,
+              maxPhoneNumbers: 1,
+              maxTeamMembers: 2,
+            },
         currentPeriodStart: new Date(),
         currentPeriodEnd: new Date(),
         cancelAtPeriodEnd: false,
@@ -79,6 +100,7 @@ export class BillingService {
 
     return {
       ...sub,
+      plan: sub.plan ? { ...sub.plan, currency: gatewayCurrency } : sub.plan,
       daysRemaining,
       isExpired,
       status: isExpired && sub.status === 'ACTIVE' ? 'EXPIRED' : sub.status,
@@ -270,11 +292,11 @@ export class BillingService {
       throw new NotFoundException('Organization not found');
     }
 
-    const price = billingCycle === 'ANNUAL' ? plan.annualPrice : plan.monthlyPrice;
-    const amountInPaise = Math.round(Number(price) * 100);
-    const currency = plan.currency === 'USD' ? 'INR' : plan.currency || 'INR';
-
     const creds = await this.getDecryptedCredentials();
+    const activeCurrency = (creds?.currency || plan.currency || 'INR').toUpperCase();
+
+    const price = billingCycle === 'ANNUAL' ? plan.annualPrice : plan.monthlyPrice;
+    const amountInSubunits = Math.round(Number(price) * 100);
 
     let orderId = `order_sim_${Date.now()}`;
     let isSimulation = true;
@@ -289,8 +311,8 @@ export class BillingService {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            amount: amountInPaise,
-            currency: 'INR',
+            amount: amountInSubunits,
+            currency: activeCurrency,
             receipt: `rcpt_${Date.now()}_${org.slug.slice(0, 10)}`,
             notes: {
               organizationId,
@@ -298,6 +320,7 @@ export class BillingService {
               planId: plan.id,
               planTier: plan.tier,
               billingCycle,
+              currency: activeCurrency,
             },
           }),
         });
@@ -306,7 +329,7 @@ export class BillingService {
           const resData: any = await response.json();
           orderId = resData.id;
           isSimulation = false;
-          this.logger.log(`Created live Razorpay order ${orderId} for organization ${org.name}`);
+          this.logger.log(`Created live Razorpay order ${orderId} (${activeCurrency}) for organization ${org.name}`);
         } else {
           const errText = await response.text();
           this.logger.warn(`Razorpay API order creation failed, fallback to simulation mode: ${errText}`);
@@ -329,6 +352,7 @@ export class BillingService {
           isSimulation,
           planTier: plan.tier,
           amount: price.toString(),
+          currency: activeCurrency,
           billingCycle,
         },
       },
@@ -336,9 +360,9 @@ export class BillingService {
 
     return {
       orderId,
-      amount: amountInPaise,
+      amount: amountInSubunits,
       displayAmount: Number(price),
-      currency: 'INR',
+      currency: activeCurrency,
       keyId: creds?.keyId || 'rzp_test_simulated_key',
       planId: plan.id,
       planName: plan.name,
@@ -428,6 +452,7 @@ export class BillingService {
     });
 
     // 3. Generate Paid Invoice record
+    const activeCurrency = (creds?.currency || plan.currency || 'INR').toUpperCase();
     const invoiceNumber = `INV-${new Date().getFullYear()}-${Math.floor(100000 + Math.random() * 900000)}`;
     const invoice = await this.prisma.invoice.create({
       data: {
@@ -435,7 +460,7 @@ export class BillingService {
         subscriptionId: subscription.id,
         invoiceNumber,
         amount: amountPaid,
-        currency: 'INR',
+        currency: activeCurrency,
         status: 'PAID',
         paidAt: new Date(),
         metadata: {
@@ -443,6 +468,7 @@ export class BillingService {
           razorpayPaymentId,
           billingCycle,
           planName: plan.name,
+          currency: activeCurrency,
         },
       },
     });

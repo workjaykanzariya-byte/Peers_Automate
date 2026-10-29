@@ -111,6 +111,22 @@ export const SubscriptionPage: React.FC = () => {
     queryFn: () => api.get('/billing/plans'),
   });
 
+  // 2b. Fetch Razorpay Public Config for Dynamic Currency
+  const { data: rzpConfig } = useQuery<{
+    isConfigured: boolean;
+    keyId: string;
+    currency: string;
+    isEnabled: boolean;
+  }>({
+    queryKey: ['razorpay-public-config'],
+    queryFn: () => api.get('/billing/razorpay/config'),
+  });
+
+  const activeCurrency = (rzpConfig?.currency || 'INR').toUpperCase();
+  const isUSD = activeCurrency === 'USD';
+  const currencySymbol = isUSD ? '$' : '₹';
+  const currencyLocale = isUSD ? 'en-US' : 'en-IN';
+
   // 3. Fetch Invoices
   const { data: invoices = [], isLoading: invoicesLoading } = useQuery<InvoiceItem[]>({
     queryKey: ['billing-invoices', activeOrg?.id],
@@ -383,12 +399,12 @@ export const SubscriptionPage: React.FC = () => {
         {/* Metric 2: Monthly Spend */}
         <div className="p-5 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-xs flex items-center gap-4">
           <div className="w-12 h-12 rounded-full bg-sky-50 dark:bg-sky-500/15 border border-sky-200 dark:border-sky-500/30 flex items-center justify-center text-sky-600 dark:text-sky-400 shrink-0">
-            <span className="text-lg font-black font-mono">₹</span>
+            <span className="text-lg font-black font-mono">{currencySymbol}</span>
           </div>
           <div>
             <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">Monthly Spend (With Tax)</div>
             <div className="text-2xl font-black text-slate-900 dark:text-white mt-0.5">
-              ₹{monthlySpend.toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+              {currencySymbol}{monthlySpend.toLocaleString(currencyLocale, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
             </div>
           </div>
         </div>
@@ -433,10 +449,10 @@ export const SubscriptionPage: React.FC = () => {
                     {currentPlan?.name || 'Growth Plan'}
                   </h3>
                   <p className="text-xs text-slate-500 dark:text-slate-400">
-                    Total: ₹
+                    Total: {currencySymbol}
                     {Number(
                       billingCycle === 'ANNUAL' ? currentPlan?.annualPrice || 25000 : currentPlan?.monthlyPrice || 2999,
-                    ).toLocaleString('en-IN', { minimumFractionDigits: 2 })}{' '}
+                    ).toLocaleString(currencyLocale, { minimumFractionDigits: 2 })}{' '}
                     / {billingCycle === 'ANNUAL' ? 'yearly' : 'monthly'} (Including Tax)
                   </p>
                 </div>
@@ -628,11 +644,11 @@ export const SubscriptionPage: React.FC = () => {
                           )}
                         </div>
 
-                        {/* Price Display in INR */}
+                        {/* Price Display */}
                         <div>
                           <div className="flex items-baseline gap-1">
                             <span className="text-3xl font-black text-slate-900 dark:text-white font-mono">
-                              ₹{Number(price).toLocaleString('en-IN')}
+                              {currencySymbol}{Number(price).toLocaleString(currencyLocale)}
                             </span>
                             <span className="text-xs font-semibold text-slate-500 dark:text-slate-400">
                               / {billingCycle === 'ANNUAL' ? 'year' : 'month'}
@@ -646,13 +662,13 @@ export const SubscriptionPage: React.FC = () => {
                           <div className="flex items-center gap-2">
                             <Check className="w-4 h-4 text-emerald-500 shrink-0" />
                             <span>
-                              <strong>{Number(p.maxContacts || 0).toLocaleString('en-IN')}</strong> WhatsApp Contacts
+                              <strong>{Number(p.maxContacts || 0).toLocaleString()}</strong> WhatsApp Contacts
                             </span>
                           </div>
                           <div className="flex items-center gap-2">
                             <Check className="w-4 h-4 text-emerald-500 shrink-0" />
                             <span>
-                              <strong>{Number(p.maxMonthlyMessages || 0).toLocaleString('en-IN')}</strong> Messages / Month
+                              <strong>{Number(p.maxMonthlyMessages || 0).toLocaleString()}</strong> Messages / Month
                             </span>
                           </div>
                           <div className="flex items-center gap-2">
@@ -755,7 +771,7 @@ export const SubscriptionPage: React.FC = () => {
                         {new Date(inv.billingDate).toLocaleDateString()}
                       </td>
                       <td className="px-4 py-3.5 font-mono font-bold text-slate-900 dark:text-slate-200">
-                        ₹{Number(inv.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                        {inv.currency === 'USD' ? '$' : '₹'}{Number(inv.amount).toLocaleString(inv.currency === 'USD' ? 'en-US' : 'en-IN', { minimumFractionDigits: 2 })}
                       </td>
                       <td className="px-4 py-3.5">
                         <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-300">
@@ -815,7 +831,7 @@ export const SubscriptionPage: React.FC = () => {
               <div className="flex justify-between">
                 <span className="text-slate-500">Amount Due:</span>
                 <span className="font-bold font-mono text-emerald-600 dark:text-emerald-400 text-sm">
-                  ₹{Number(simulationModal.orderData.displayAmount).toLocaleString('en-IN')}
+                  {simulationModal.orderData.currency === 'USD' ? '$' : '₹'}{Number(simulationModal.orderData.displayAmount).toLocaleString(simulationModal.orderData.currency === 'USD' ? 'en-US' : 'en-IN')}
                 </span>
               </div>
               <div className="flex justify-between">
@@ -898,7 +914,7 @@ export const SubscriptionPage: React.FC = () => {
                 <div className="flex justify-between font-bold text-slate-900 dark:text-white text-sm pt-2 border-t border-slate-200 dark:border-slate-800">
                   <span>Total Paid:</span>
                   <span className="text-emerald-600 dark:text-emerald-400">
-                    ₹{Number(selectedReceipt.amount).toLocaleString('en-IN', { minimumFractionDigits: 2 })}
+                    {selectedReceipt.currency === 'USD' ? '$' : '₹'}{Number(selectedReceipt.amount).toLocaleString(selectedReceipt.currency === 'USD' ? 'en-US' : 'en-IN', { minimumFractionDigits: 2 })}
                   </span>
                 </div>
               </div>

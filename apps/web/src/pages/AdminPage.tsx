@@ -424,6 +424,10 @@ export const AdminPage: React.FC = () => {
     }
   }, [razorpaySettings]);
 
+  const adminCurrency = (razorpaySettings?.currency || razorpayForm.currency || 'INR').toUpperCase();
+  const adminCurrencySymbol = adminCurrency === 'USD' ? '$' : '₹';
+  const adminLocale = adminCurrency === 'USD' ? 'en-US' : 'en-IN';
+
   const saveRazorpayMutation = useMutation({
     mutationFn: (dto: any) => api.post('/admin/settings/razorpay', dto),
     onSuccess: () => {
@@ -1110,9 +1114,9 @@ export const AdminPage: React.FC = () => {
                     <th className="px-5 py-3.5">Status</th>
                     <th className="px-5 py-3.5">Team</th>
                     <th className="px-5 py-3.5">Contacts</th>
-                    <th className="px-5 py-3.5">Campaigns</th>
-                    <th className="px-5 py-3.5">Registered</th>
-                    <th className="px-5 py-3.5 text-right">Actions</th>
+                    <th className="px-5 py-3.5 whitespace-nowrap">Campaigns</th>
+                    <th className="px-5 py-3.5 whitespace-nowrap">Registered</th>
+                    <th className="px-5 py-3.5 text-right whitespace-nowrap min-w-[280px]">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 dark:divide-slate-800/60">
@@ -1180,128 +1184,143 @@ export const AdminPage: React.FC = () => {
                           <td className="px-5 py-4 text-slate-700 dark:text-slate-300 font-medium">{org._count?.contacts || 0}</td>
                           <td className="px-5 py-4 text-slate-700 dark:text-slate-300 font-medium">{org._count?.campaigns || 0}</td>
                           <td className="px-5 py-4 text-slate-500 dark:text-slate-400 text-[11px]">{new Date(org.createdAt).toLocaleDateString()}</td>
-                          <td className="px-5 py-4 text-right space-x-2">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setActivateSubModal({
-                                  isOpen: true,
-                                  org,
-                                  planTier: org.planTier || 'GROWTH',
-                                  months: 1,
-                                  reason: 'Manual Admin Approval / Offline Payment',
-                                });
-                              }}
-                              className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:hover:bg-emerald-500/25 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-500/30 text-xs font-bold transition cursor-pointer shadow-2xs"
-                              title="Mark Subscription as Paid / Activate Workspace"
-                            >
-                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
-                              <span>Mark Paid</span>
-                            </button>
-                            <button
-                              onClick={() => {
-                                switchOrganization(org.id, {
-                                  name: org.name,
-                                  slug: org.slug,
-                                  planTier: org.planTier,
-                                });
-                                localStorage.setItem('peers_owner_view_mode', 'customer');
-                                navigate('/dashboard');
-                              }}
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-xs cursor-pointer"
-                              title={`Switch directly to ${org.name} Workspace`}
-                            >
-                              <ExternalLink className="w-3.5 h-3.5" />
-                              <span>Login / Switch</span>
-                            </button>
+                          <td className="px-5 py-3 text-right whitespace-nowrap">
+                            <div className="inline-flex items-center justify-end gap-1.5 whitespace-nowrap">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActivateSubModal({
+                                    isOpen: true,
+                                    org,
+                                    planTier: org.planTier || 'GROWTH',
+                                    months: 1,
+                                    reason: 'Manual Admin Approval / Offline Payment',
+                                  });
+                                }}
+                                className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-lg text-xs font-bold transition cursor-pointer shadow-2xs whitespace-nowrap ${
+                                  isSubActive
+                                    ? 'bg-slate-50 hover:bg-slate-100 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+                                    : 'bg-emerald-50 hover:bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:hover:bg-emerald-500/25 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-500/40'
+                                }`}
+                                title={isSubActive ? 'Extend Subscription / Add Paid Months' : 'Mark Subscription as Paid / Activate Workspace'}
+                              >
+                                <CheckCircle2 className={`w-3.5 h-3.5 ${isSubActive ? 'text-slate-500' : 'text-emerald-600 dark:text-emerald-400'}`} />
+                                <span>{isSubActive ? 'Extend' : 'Mark Paid'}</span>
+                              </button>
 
-                            <button
-                              onClick={() => {
-                                setSelectedOrgId(org.id);
-                                setOrgDetailTab('overview');
-                              }}
-                              className="px-2.5 py-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 text-xs font-semibold border border-slate-200 dark:border-transparent transition cursor-pointer"
-                            >
-                              Inspect Details
-                            </button>
-                            <button
-                              onClick={() => {
-                                const phone = (org as any).phoneNumbers?.[0];
-                                const meta = phone?.metaIntegration;
-                                const webhook = (org as any).webhookEndpoints?.[0];
-                                setEditingOrg({
-                                  isOpen: true,
-                                  id: org.id,
-                                  name: org.name,
-                                  slug: org.slug,
-                                  planTier: org.planTier,
-                                  status: org.status,
-                                  timezone: (org as any).timezone || 'Asia/Kolkata',
-                                  appId: meta?.appId || '1460871381832780',
-                                  metaBusinessId: meta?.metaBusinessId || '5418283234857525',
-                                  wabaName: meta?.name || org.name,
-                                  wabaId: meta?.wabaId || '',
-                                  phoneNumberId: phone?.phoneNumberId || '',
-                                  displayPhoneNumber: phone?.displayPhoneNumber || '',
-                                  verifiedName: phone?.verifiedName || org.name,
-                                  accessToken: '',
-                                  externalWebhookUrl: webhook?.url || '',
-                                  externalWebhookToken: webhook?.secret || 'unity_whatsapp_webhook_verify_token_2026',
-                                  isWebhookActive: webhook?.isActive !== false,
-                                });
-                              }}
-                              className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 dark:bg-blue-500/15 dark:hover:bg-blue-500/25 dark:border-blue-500/30 dark:text-blue-300 text-xs font-semibold transition cursor-pointer"
-                              title={`Edit ${org.name} details, plan, WhatsApp connection, and webhooks`}
-                            >
-                              <Edit3 className="w-3.5 h-3.5" />
-                              <span>Edit Details</span>
-                            </button>
-                            {isSuspended ? (
                               <button
+                                type="button"
+                                onClick={() => {
+                                  switchOrganization(org.id, {
+                                    name: org.name,
+                                    slug: org.slug,
+                                    planTier: org.planTier,
+                                  });
+                                  localStorage.setItem('peers_owner_view_mode', 'customer');
+                                  navigate('/dashboard');
+                                }}
+                                className="inline-flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shadow-2xs cursor-pointer whitespace-nowrap active:scale-95"
+                                title={`Switch directly to ${org.name} Workspace`}
+                              >
+                                <ExternalLink className="w-3.5 h-3.5" />
+                                <span>Switch</span>
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedOrgId(org.id);
+                                  setOrgDetailTab('overview');
+                                }}
+                                className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700 transition cursor-pointer shadow-2xs"
+                                title="Inspect Details"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                              </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const phone = (org as any).phoneNumbers?.[0];
+                                  const meta = phone?.metaIntegration;
+                                  const webhook = (org as any).webhookEndpoints?.[0];
+                                  setEditingOrg({
+                                    isOpen: true,
+                                    id: org.id,
+                                    name: org.name,
+                                    slug: org.slug,
+                                    planTier: org.planTier,
+                                    status: org.status,
+                                    timezone: (org as any).timezone || 'Asia/Kolkata',
+                                    appId: meta?.appId || '1460871381832780',
+                                    metaBusinessId: meta?.metaBusinessId || '5418283234857525',
+                                    wabaName: meta?.name || org.name,
+                                    wabaId: meta?.wabaId || '',
+                                    phoneNumberId: phone?.phoneNumberId || '',
+                                    displayPhoneNumber: phone?.displayPhoneNumber || '',
+                                    verifiedName: phone?.verifiedName || org.name,
+                                    accessToken: '',
+                                    externalWebhookUrl: webhook?.url || '',
+                                    externalWebhookToken: webhook?.secret || 'unity_whatsapp_webhook_verify_token_2026',
+                                    isWebhookActive: webhook?.isActive !== false,
+                                  });
+                                }}
+                                className="p-1.5 rounded-lg bg-blue-50 hover:bg-blue-100 border border-blue-200 text-blue-700 dark:bg-blue-500/15 dark:hover:bg-blue-500/25 dark:border-blue-500/30 dark:text-blue-300 transition cursor-pointer shadow-2xs"
+                                title={`Edit ${org.name} details, plan, WhatsApp connection, and webhooks`}
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                              </button>
+
+                              {isSuspended ? (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setSuspensionModal({
+                                      isOpen: true,
+                                      org,
+                                      action: 'REACTIVATE',
+                                      reason: '',
+                                    })
+                                  }
+                                  className="p-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 dark:bg-emerald-500/15 dark:hover:bg-emerald-500/25 dark:border-emerald-500/30 dark:text-emerald-300 transition cursor-pointer shadow-2xs"
+                                  title="Reactivate Organization"
+                                >
+                                  <Unlock className="w-3.5 h-3.5" />
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    setSuspensionModal({
+                                      isOpen: true,
+                                      org,
+                                      action: 'SUSPEND',
+                                      reason: '',
+                                    })
+                                  }
+                                  className="p-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-700 dark:bg-amber-500/15 dark:hover:bg-amber-500/25 dark:border-amber-500/30 dark:text-amber-300 transition cursor-pointer shadow-2xs"
+                                  title="Suspend Organization"
+                                >
+                                  <Lock className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+
+                              <button
+                                type="button"
                                 onClick={() =>
-                                  setSuspensionModal({
+                                  setDeleteOrgModal({
                                     isOpen: true,
                                     org,
-                                    action: 'REACTIVATE',
-                                    reason: '',
+                                    isDeleting: false,
+                                    error: null,
                                   })
                                 }
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 text-emerald-700 dark:bg-emerald-500/15 dark:hover:bg-emerald-500/25 dark:border-emerald-500/30 dark:text-emerald-300 text-xs font-semibold transition"
+                                className="p-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 dark:bg-rose-500/15 dark:hover:bg-rose-500/25 dark:border-rose-500/30 dark:text-rose-300 transition cursor-pointer shadow-2xs"
+                                title="Delete this organization workspace permanently"
                               >
-                                <Unlock className="w-3.5 h-3.5" />
-                                <span>Reactivate</span>
+                                <Trash2 className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
                               </button>
-                            ) : (
-                              <button
-                                onClick={() =>
-                                  setSuspensionModal({
-                                    isOpen: true,
-                                    org,
-                                    action: 'SUSPEND',
-                                    reason: '',
-                                  })
-                                }
-                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-amber-50 hover:bg-amber-100 border border-amber-200 text-amber-700 dark:bg-amber-500/15 dark:hover:bg-amber-500/25 dark:border-amber-500/30 dark:text-amber-300 text-xs font-semibold transition"
-                              >
-                                <Lock className="w-3.5 h-3.5" />
-                                <span>Suspend</span>
-                              </button>
-                            )}
-                            <button
-                              onClick={() =>
-                                setDeleteOrgModal({
-                                  isOpen: true,
-                                  org,
-                                  isDeleting: false,
-                                  error: null,
-                                })
-                              }
-                              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-rose-50 hover:bg-rose-100 border border-rose-200 text-rose-700 dark:bg-rose-500/15 dark:hover:bg-rose-500/25 dark:border-rose-500/30 dark:text-rose-300 text-xs font-semibold transition cursor-pointer"
-                              title="Delete this organization workspace permanently"
-                            >
-                              <Trash2 className="w-3.5 h-3.5 text-rose-600 dark:text-rose-400" />
-                              <span>Delete</span>
-                            </button>
+                            </div>
                           </td>
                         </tr>
                       );
@@ -1798,7 +1817,7 @@ export const AdminPage: React.FC = () => {
               <div>
                 <h3 className="font-extrabold text-slate-900 dark:text-white text-base">Commercial Subscription Plans</h3>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  Manage tiers, pricing in Indian Rupees (₹), monthly message quotas, and phone line allocations.
+                  Manage tiers, pricing in {adminCurrency} ({adminCurrencySymbol}), monthly message quotas, and phone line allocations.
                 </p>
               </div>
 
@@ -1810,9 +1829,9 @@ export const AdminPage: React.FC = () => {
                     mode: 'create',
                     name: '',
                     tier: '',
-                    monthlyPrice: 1999,
-                    annualPrice: 19990,
-                    currency: 'INR',
+                    monthlyPrice: adminCurrency === 'USD' ? 29 : 1999,
+                    annualPrice: adminCurrency === 'USD' ? 290 : 19990,
+                    currency: adminCurrency,
                     maxContacts: 5000,
                     maxMonthlyMessages: 15000,
                     maxPhoneNumbers: 2,
@@ -1832,41 +1851,46 @@ export const AdminPage: React.FC = () => {
               {plansLoading ? (
                 <div className="col-span-3 text-center py-8 text-slate-400 font-mono text-xs">Loading plans...</div>
               ) : (
-                (plans || []).map((p) => (
-                  <div
-                    key={p.id}
-                    className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs flex flex-col justify-between"
-                  >
-                    <div className="space-y-4">
-                      <div className="flex justify-between items-start">
-                        <div>
-                          <h3 className="font-extrabold text-slate-900 dark:text-white text-lg">{p.name}</h3>
-                          <span className="text-[11px] font-mono text-slate-400 uppercase font-bold">{p.tier}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5">
-                          <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
-                              p.isActive !== false
-                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-300'
-                                : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
-                            }`}
-                          >
-                            {p.isActive !== false ? 'Active' : 'Archived'}
-                          </span>
-                        </div>
-                      </div>
+                (plans || []).map((p) => {
+                  const planCurr = (p.currency || adminCurrency).toUpperCase();
+                  const planSymbol = planCurr === 'USD' ? '$' : '₹';
+                  const planLocale = planCurr === 'USD' ? 'en-US' : 'en-IN';
 
-                      <div className="space-y-1">
-                        <div className="text-3xl font-black text-slate-900 dark:text-white font-mono">
-                          ₹{Number(p.monthlyPrice).toLocaleString('en-IN')}{' '}
-                          <span className="text-xs font-normal text-slate-500 dark:text-slate-400 font-sans">
-                            / month
-                          </span>
+                  return (
+                    <div
+                      key={p.id}
+                      className="p-6 rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 space-y-4 shadow-xs flex flex-col justify-between"
+                    >
+                      <div className="space-y-4">
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <h3 className="font-extrabold text-slate-900 dark:text-white text-lg">{p.name}</h3>
+                            <span className="text-[11px] font-mono text-slate-400 uppercase font-bold">{p.tier}</span>
+                          </div>
+                          <div className="flex items-center gap-1.5">
+                            <span
+                              className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                                p.isActive !== false
+                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 dark:bg-emerald-500/20 dark:text-emerald-300'
+                                  : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+                              }`}
+                            >
+                              {p.isActive !== false ? 'Active' : 'Archived'}
+                            </span>
+                          </div>
                         </div>
-                        <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
-                          Annual: ₹{Number(p.annualPrice || p.monthlyPrice * 10).toLocaleString('en-IN')} / year
+
+                        <div className="space-y-1">
+                          <div className="text-3xl font-black text-slate-900 dark:text-white font-mono">
+                            {planSymbol}{Number(p.monthlyPrice).toLocaleString(planLocale)}{' '}
+                            <span className="text-xs font-normal text-slate-500 dark:text-slate-400 font-sans">
+                              / month
+                            </span>
+                          </div>
+                          <div className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+                            Annual: {planSymbol}{Number(p.annualPrice || p.monthlyPrice * 10).toLocaleString(planLocale)} / year
+                          </div>
                         </div>
-                      </div>
 
                       <div className="space-y-2 text-xs border-t border-slate-100 dark:border-slate-800 pt-4 text-slate-700 dark:text-slate-300">
                         <div className="flex justify-between">
@@ -1941,7 +1965,8 @@ export const AdminPage: React.FC = () => {
                       </button>
                     </div>
                   </div>
-                ))
+                );
+              })
               )}
             </div>
           </div>
@@ -4421,7 +4446,7 @@ export const AdminPage: React.FC = () => {
                     {planModal.mode === 'create' ? 'Create Subscription Plan' : 'Edit Subscription Plan'}
                   </h3>
                   <p className="text-[11px] text-slate-500 dark:text-slate-400">
-                    Define commercial tier limits, pricing in INR (₹), and features.
+                    Define commercial tier limits, pricing in {planModal.currency || adminCurrency} ({planModal.currency === 'USD' ? '$' : '₹'}), and features.
                   </p>
                 </div>
               </div>
@@ -4442,7 +4467,7 @@ export const AdminPage: React.FC = () => {
                   tier: planModal.tier,
                   monthlyPrice: Number(planModal.monthlyPrice),
                   annualPrice: Number(planModal.annualPrice),
-                  currency: planModal.currency || 'INR',
+                  currency: planModal.currency || adminCurrency,
                   maxContacts: Number(planModal.maxContacts),
                   maxMonthlyMessages: Number(planModal.maxMonthlyMessages),
                   maxPhoneNumbers: Number(planModal.maxPhoneNumbers),
@@ -4482,7 +4507,9 @@ export const AdminPage: React.FC = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div>
-                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1.5">Monthly Price (₹) *</label>
+                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1.5">
+                    Monthly Price ({planModal.currency === 'USD' ? '$' : '₹'}) *
+                  </label>
                   <input
                     type="number"
                     required
@@ -4495,7 +4522,9 @@ export const AdminPage: React.FC = () => {
                 </div>
 
                 <div>
-                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1.5">Annual Price (₹) *</label>
+                  <label className="block text-slate-700 dark:text-slate-300 font-bold mb-1.5">
+                    Annual Price ({planModal.currency === 'USD' ? '$' : '₹'}) *
+                  </label>
                   <input
                     type="number"
                     required
